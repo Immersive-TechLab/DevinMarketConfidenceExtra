@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend } from 'recharts';
-import { Search, Plus, Edit, Trash, X } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea, Legend } from 'recharts';
+import { Search, Plus, Edit, Trash, X, Eye, EyeOff } from 'lucide-react';
 
 interface MarketData {
   date: string;
@@ -106,6 +106,7 @@ function App() {
     currentValue?: number;
   } | null>(null);
   const [investmentAmount, setInvestmentAmount] = useState<number | undefined>(undefined);
+  const [selectedAssets, setSelectedAssets] = useState<{[key: string]: boolean}>({}); // Track which assets are visible
   
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -383,6 +384,16 @@ function App() {
   useEffect(() => {
     fetchPortfolios();
   }, []);
+  
+  useEffect(() => {
+    if (eventSimulation?.asset_performance) {
+      const initialSelectedState: {[key: string]: boolean} = {};
+      Object.keys(eventSimulation.asset_performance).forEach(symbol => {
+        initialSelectedState[symbol] = true;
+      });
+      setSelectedAssets(initialSelectedState);
+    }
+  }, [eventSimulation]);
 
   useEffect(() => {
     if (currentPortfolio) {
@@ -409,32 +420,38 @@ function App() {
       
       const analysisData = await response.json();
       console.log('Event analysis data:', analysisData);
+      console.log('Setting highlight period:', {
+        start: analysisData.time_period.start_date,
+        end: analysisData.time_period.end_date
+      });
       setEventAnalysis(analysisData);
       
       if (analysisData.time_period && analysisData.time_period.start_date && analysisData.time_period.end_date) {
+        const startDate = new Date(analysisData.time_period.start_date);
+        const endDate = new Date(analysisData.time_period.end_date);
+        
         setHighlightPeriod({
-          start: analysisData.time_period.start_date,
-          end: analysisData.time_period.end_date
+          start: startDate.toISOString().split('T')[0],
+          end: endDate.toISOString().split('T')[0]
         });
         
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/market-data?period=max`);
+        const bufferBefore = new Date(startDate);
+        bufferBefore.setMonth(bufferBefore.getMonth() - 3);
+        
+        const bufferAfter = new Date(endDate);
+        bufferAfter.setMonth(bufferAfter.getMonth() + 3);
+        
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/market-data?start=${bufferBefore.toISOString().split('T')[0]}&end=${bufferAfter.toISOString().split('T')[0]}`
+        );
+        
         if (response.ok) {
-          const allData = await response.json();
-          const filteredData = allData.filter((item: MarketData) => {
-            const itemDate = new Date(item.date);
-            const startDate = new Date(analysisData.time_period.start_date);
-            const endDate = new Date(analysisData.time_period.end_date);
-            
-            const bufferBefore = new Date(startDate);
-            bufferBefore.setMonth(bufferBefore.getMonth() - 3);
-            
-            const bufferAfter = new Date(endDate);
-            bufferAfter.setMonth(bufferAfter.getMonth() + 3);
-            
-            return itemDate >= bufferBefore && itemDate <= bufferAfter;
-          });
+          const periodData = await response.json();
+          console.log('Fetched historical data:', periodData.length, 'data points');
           
-          setMarketData(filteredData);
+          if (periodData.length > 0) {
+            setMarketData(periodData);
+          }
         }
       }
     } catch (error) {
@@ -612,18 +629,38 @@ function App() {
                           {/* Highlight event period if available */}
                           {highlightPeriod && (
                             <>
-                              <ReferenceLine 
-                                x={highlightPeriod.start} 
-                                stroke="#ef4444" 
-                                strokeWidth={2}
-                                label={{ value: 'Event Start', position: 'top' }}
-                              />
-                              <ReferenceLine 
-                                x={highlightPeriod.end} 
-                                stroke="#ef4444" 
-                                strokeWidth={2}
-                                label={{ value: 'Event End', position: 'top' }}
-                              />
+                              {console.log('Market data dates:', marketData.map(d => d.date))}
+                              {console.log('Highlight period:', highlightPeriod)}
+                              {/* Add shaded area for the entire event period */}
+                              {marketData.some(d => d.date === highlightPeriod.start || 
+                                 (new Date(d.date) >= new Date(highlightPeriod.start) && 
+                                  new Date(d.date) <= new Date(highlightPeriod.end))) && (
+                                <ReferenceArea
+                                  x1={highlightPeriod.start}
+                                  x2={highlightPeriod.end}
+                                  fill="#ef4444"
+                                  fillOpacity={0.1}
+                                  stroke="none"
+                                />
+                              )}
+                              {marketData.some(d => d.date === highlightPeriod.start || 
+                                 new Date(d.date) >= new Date(highlightPeriod.start)) && (
+                                <ReferenceLine 
+                                  x={highlightPeriod.start} 
+                                  stroke="#ef4444" 
+                                  strokeWidth={2}
+                                  label={{ value: 'Event Start', position: 'top' }}
+                                />
+                              )}
+                              {marketData.some(d => d.date === highlightPeriod.end || 
+                                 new Date(d.date) <= new Date(highlightPeriod.end)) && (
+                                <ReferenceLine 
+                                  x={highlightPeriod.end} 
+                                  stroke="#ef4444" 
+                                  strokeWidth={2}
+                                  label={{ value: 'Event End', position: 'top' }}
+                                />
+                              )}
                             </>
                           )}
                         </LineChart>
@@ -649,22 +686,27 @@ function App() {
                     <p className="text-gray-600">
                       Welcome! This section shows the MSCI World Index performance over time.
                     </p>
-                    <p className="text-gray-600">
-                      To analyze how market events impact your portfolio and get personalized investment advice:
-                    </p>
-                    <ol className="list-decimal pl-5 space-y-2 text-gray-600">
-                      <li>Switch to the <span className="font-semibold">Portfolio Management</span> tab</li>
-                      <li>Select or create a portfolio</li>
-                      <li>Enter a global event (e.g., "COVID-19 pandemic") in the Event Analysis section</li>
-                      <li>View simulation results showing different investment strategies</li>
-                    </ol>
-                    <div className="mt-4">
-                      <button
-                        onClick={() => setActiveTab('portfolio')}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                      >
-                        Go to Portfolio Management
-                      </button>
+                    <div className="flex flex-col gap-3">
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            placeholder="Enter a global event (e.g., COVID-19 pandemic)..."
+                            value={eventInput}
+                            onChange={(e) => setEventInput(e.target.value)}
+                            onKeyUp={handleKeyPress}
+                            className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                        </div>
+                        <button 
+                          onClick={handleEventAnalysis}
+                          className={`px-4 py-2 rounded-md ${isAnalyzing ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                          disabled={isAnalyzing}
+                        >
+                          {isAnalyzing ? 'Analyzing...' : 'Analyze'}
+                        </button>
+                      </div>
                     </div>
                     
                     {eventAnalysis && (
@@ -1007,10 +1049,10 @@ function App() {
                               </p>
                               
                               {/* Combined Performance Chart */}
-                              <div className="h-80 mb-6">
+                              <div className="h-96 mb-6">
                                 <ResponsiveContainer width="100%" height="100%">
                                   <LineChart
-                                    margin={{ top: 10, right: 30, left: 10, bottom: 10 }}
+                                    margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
                                   >
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis 
@@ -1037,41 +1079,49 @@ function App() {
                                       x={eventSimulation.time_period.middle_date}
                                       stroke="#ff0000"
                                       strokeDasharray="3 3"
-                                      label={{ value: 'Decision Point', position: 'top', fill: '#ff0000', fontSize: 12 }}
+                                      label={{ 
+                                        value: 'Decision Point', 
+                                        position: 'insideTopRight',
+                                        fill: '#ff0000', 
+                                        fontSize: 12,
+                                        offset: 10
+                                      }}
                                     />
                                     
-                                    {/* Generate a line for each asset */}
-                                    {Object.entries(eventSimulation.asset_performance).map(([symbol, data], index) => {
-                                      const colors = [
-                                        "#3b82f6", // blue
-                                        "#10b981", // green
-                                        "#f59e0b", // amber
-                                        "#8b5cf6", // violet
-                                        "#ec4899", // pink
-                                        "#06b6d4", // cyan
-                                        "#f43f5e", // rose
-                                        "#84cc16"  // lime
-                                      ];
-                                      
-                                      const colorIndex = index % colors.length;
-                                      
-                                      return (
-                                        <Line
-                                          key={symbol}
-                                          data={data.performance.map(point => ({
-                                            date: point.date,
-                                            value: point.close * (data.allocation / 100) * 
-                                              (currentPortfolio?.investment_amount || 1)
-                                          }))}
-                                          type="monotone"
-                                          dataKey="value"
-                                          name={symbol}
-                                          stroke={colors[colorIndex]}
-                                          dot={false}
-                                          strokeWidth={2}
-                                          activeDot={{ r: 6 }}
-                                        />
-                                      );
+                                    {/* Generate a line for each selected asset */}
+                                    {Object.entries(eventSimulation.asset_performance)
+                                      .filter(([symbol]) => selectedAssets[symbol] !== false) // Only show selected assets
+                                      .map(([symbol, data], index) => {
+                                        const colors = [
+                                          "#3b82f6", // blue
+                                          "#10b981", // green
+                                          "#f59e0b", // amber
+                                          "#8b5cf6", // violet
+                                          "#ec4899", // pink
+                                          "#06b6d4", // cyan
+                                          "#f43f5e", // rose
+                                          "#84cc16"  // lime
+                                        ];
+                                        
+                                        const colorIndex = index % colors.length;
+                                        
+                                        return (
+                                          <Line
+                                            key={symbol}
+                                            data={data.performance.map(point => ({
+                                              date: point.date,
+                                              value: point.close * (data.allocation / 100) * 
+                                                (currentPortfolio?.investment_amount || 1)
+                                            }))}
+                                            type="monotone"
+                                            dataKey="value"
+                                            name={symbol}
+                                            stroke={colors[colorIndex]}
+                                            dot={false}
+                                            strokeWidth={2}
+                                            activeDot={{ r: 6 }}
+                                          />
+                                        );
                                     })}
                                   </LineChart>
                                 </ResponsiveContainer>
@@ -1084,11 +1134,19 @@ function App() {
                                   const endValue = data.performance[data.performance.length - 1]?.close || 0;
                                   const percentChange = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
                                   const dollarValue = (data.allocation / 100) * (currentPortfolio?.investment_amount || 0);
+                                  const isSelected = selectedAssets[symbol] !== false; // Default to true if not set
                                   
                                   return (
-                                    <div key={symbol} className="bg-gray-50 p-3 rounded-lg border border-gray-200 shadow-sm">
+                                    <div key={symbol} className={`p-3 rounded-lg border shadow-sm ${isSelected ? 'bg-gray-50 border-gray-200' : 'bg-gray-100 border-gray-300'}`}>
                                       <div className="flex justify-between items-center mb-2">
-                                        <h6 className="font-semibold text-gray-800">
+                                        <h6 className="font-semibold text-gray-800 flex items-center">
+                                          <button 
+                                            onClick={() => setSelectedAssets(prev => ({...prev, [symbol]: !isSelected}))}
+                                            className="mr-2 text-gray-500 hover:text-blue-600 focus:outline-none"
+                                            title={isSelected ? "Hide from chart" : "Show on chart"}
+                                          >
+                                            {isSelected ? <Eye size={16} /> : <EyeOff size={16} />}
+                                          </button>
                                           {symbol}
                                         </h6>
                                         <div className={`text-sm font-bold ${percentChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>

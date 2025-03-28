@@ -65,17 +65,28 @@ async def root():
     return {"message": "Welcome to the Market Confidence API"}
 
 @app.get("/api/market-data")
-async def get_market_data(period: Optional[str] = "1y"):
+async def get_market_data(
+    period: Optional[str] = None,
+    start: Optional[str] = None,
+    end: Optional[str] = None
+):
     """
     Get MSCI World Index market data
     
     Parameters:
     - period: Time period (1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max)
+    - start: Start date in YYYY-MM-DD format (overrides period if provided)
+    - end: End date in YYYY-MM-DD format (overrides period if provided)
     """
     try:
         ticker = "^990100-USD-STRD"
         data = yf.Ticker(ticker)
-        history = data.history(period=period)
+        
+        if start and end:
+            history = data.history(start=start, end=end)
+        else:
+            period = period or "1y"
+            history = data.history(period=period)
         
         result = []
         for date, row in history.iterrows():
