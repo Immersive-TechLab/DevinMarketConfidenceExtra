@@ -108,6 +108,24 @@ function App() {
   const [investmentAmount, setInvestmentAmount] = useState<number | undefined>(undefined);
   const [selectedAssets, setSelectedAssets] = useState<{[key: string]: boolean}>({}); // Track which assets are visible
   
+  const significantEvents = [
+    "COVID-19 pandemic",
+    "2008 Financial Crisis",
+    "Dot-com Bubble (2000)",
+    "Black Monday (1987)",
+    "1970s Oil Crisis",
+    "2020 Stock Market Crash",
+    "Brexit Referendum (2016)",
+    "2010 Flash Crash",
+    "2011 Sovereign Debt Crisis",
+    "2015 Chinese Stock Market Crash",
+    "Great Depression (1929)",
+    "9/11 Terrorist Attacks (2001)",
+    "2022 Russia-Ukraine Conflict",
+    "2018 Cryptocurrency Crash",
+    "1997 Asian Financial Crisis"
+  ];
+  
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const fetchMarketData = async () => {
@@ -687,8 +705,8 @@ function App() {
                       Welcome! This section shows the MSCI World Index performance over time.
                     </p>
                     <div className="flex flex-col gap-3">
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
+                      <div className="flex justify-center gap-2">
+                        <div className="relative w-full max-w-md mx-auto">
                           <input
                             type="text"
                             placeholder="Enter a global event (e.g., COVID-19 pandemic)..."
@@ -696,7 +714,13 @@ function App() {
                             onChange={(e) => setEventInput(e.target.value)}
                             onKeyUp={handleKeyPress}
                             className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            list="significant-events"
                           />
+                          <datalist id="significant-events">
+                            {significantEvents.map((event, index) => (
+                              <option key={index} value={event} />
+                            ))}
+                          </datalist>
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                         </div>
                         <button 
