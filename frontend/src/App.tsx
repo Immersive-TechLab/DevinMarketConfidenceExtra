@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea, Legend } from 'recharts';
-import { Search, Plus, Edit, Trash, X, Eye, EyeOff } from 'lucide-react';
+import { Search, Plus, Edit, Trash, X, Eye, EyeOff, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 
 interface MarketData {
   date: string;
@@ -74,6 +77,19 @@ interface EventSimulation {
   advice: {
     best_scenario: string;
     text: string;
+  };
+}
+
+interface PortfolioReport {
+  name: string;
+  date: string;
+  investment: number;
+  currentValue: number;
+  assets: PortfolioAsset[];
+  metrics: {
+    totalReturn: number;
+    maxDrawdown: number;
+    volatility: number;
   };
 }
 
@@ -526,6 +542,122 @@ function App() {
       currency: 'USD',
       minimumFractionDigits: 2,
     }).format(value);
+  };
+  
+  const generatePDFReport = async () => {
+    if (!currentPortfolio || !portfolioMetrics) return;
+    
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    
+    pdf.setFontSize(18);
+    pdf.setTextColor(59, 130, 246); // Blue color
+    pdf.text('Market Confidence', pageWidth / 2, 15, { align: 'center' });
+    
+    pdf.setFontSize(14);
+    pdf.text(`Portfolio Report: ${currentPortfolio.name}`, pageWidth / 2, 25, { align: 'center' });
+    
+    pdf.setFontSize(10);
+    pdf.setTextColor(100, 100, 100); // Gray color
+    const creationDate = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    pdf.text(`Generated on: ${creationDate}`, pageWidth / 2, 32, { align: 'center' });
+    
+    pdf.setFontSize(12);
+    pdf.setTextColor(0, 0, 0);
+    pdf.text('Investment Summary', 14, 45);
+    
+    const investmentData = [
+      ['Initial Investment', formatCurrency(portfolioMetrics.initialInvestment || 0)],
+      ['Current Value', formatCurrency(portfolioMetrics.currentValue || 0)],
+      ['Total Return', `${portfolioMetrics.totalReturn >= 0 ? '+' : ''}${portfolioMetrics.totalReturn.toFixed(2)}%`]
+    ];
+    
+    pdf.autoTable({
+      startY: 50,
+      head: [['Metric', 'Value']],
+      body: investmentData,
+      theme: 'grid',
+      headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255] },
+      styles: { overflow: 'linebreak', cellWidth: 'auto' },
+      margin: { top: 10 }
+    });
+    
+    pdf.text('Performance Metrics', 14, pdf.autoTable.previous.finalY + 10);
+    
+    const performanceData = [
+      ['Total Return', `${portfolioMetrics.totalReturn >= 0 ? '+' : ''}${portfolioMetrics.totalReturn.toFixed(2)}%`],
+      ['Max Drawdown', `-${portfolioMetrics.maxDrawdown.toFixed(2)}%`],
+      ['Volatility', `${portfolioMetrics.volatility.toFixed(2)}%`]
+    ];
+    
+    pdf.autoTable({
+      startY: pdf.autoTable.previous.finalY + 15,
+      head: [['Metric', 'Value']],
+      body: performanceData,
+      theme: 'grid',
+      headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255] },
+      styles: { overflow: 'linebreak', cellWidth: 'auto' },
+      margin: { top: 10 }
+    });
+    
+    pdf.text('Asset Allocation', 14, pdf.autoTable.previous.finalY + 10);
+    
+    const assetData = currentPortfolio.assets.map(asset => [
+      asset.symbol,
+      asset.name,
+      `${asset.allocation.toFixed(2)}%`,
+      formatCurrency((portfolioMetrics.initialInvestment || 0) * (asset.allocation / 100))
+    ]);
+    
+    pdf.autoTable({
+      startY: pdf.autoTable.previous.finalY + 15,
+      head: [['Symbol', 'Name', 'Allocation', 'Amount']],
+      body: assetData,
+      theme: 'grid',
+      headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255] },
+      styles: { overflow: 'linebreak', cellWidth: 'auto' },
+      margin: { top: 10 }
+    });
+    
+    if (eventSimulation && eventSimulation.event) {
+      pdf.addPage();
+      pdf.text('Event Impact Analysis', 14, 15);
+      
+      pdf.setFontSize(10);
+      pdf.text(`Event: ${eventSimulation.event}`, 14, 25);
+      pdf.text(`Analysis Period: ${formatDate(eventSimulation.time_period.start_date)} - ${formatDate(eventSimulation.time_period.end_date)}`, 14, 32);
+      
+      const scenarioData = eventSimulation.simulation_results.map(result => [
+        result.scenario,
+        `${result.total_return >= 0 ? '+' : ''}${result.total_return.toFixed(2)}%`,
+        `-${result.max_drawdown.toFixed(2)}%`,
+        result.recovery_days ? `${result.recovery_days} days` : 'N/A'
+      ]);
+      
+      pdf.autoTable({
+        startY: 40,
+        head: [['Scenario', 'Return', 'Max Drawdown', 'Recovery Time']],
+        body: scenarioData,
+        theme: 'grid',
+        headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255] },
+        styles: { overflow: 'linebreak', cellWidth: 'auto' },
+        margin: { top: 10 }
+      });
+      
+      if (eventSimulation.advice && eventSimulation.advice.text) {
+        pdf.text('Investment Advice', 14, pdf.autoTable.previous.finalY + 10);
+        pdf.setFontSize(10);
+        
+        const splitText = pdf.splitTextToSize(eventSimulation.advice.text, pageWidth - 28);
+        pdf.text(splitText, 14, pdf.autoTable.previous.finalY + 20);
+      }
+    }
+    
+    pdf.save(`${currentPortfolio.name}_Report.pdf`);
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -1197,7 +1329,16 @@ function App() {
                       <>
                         {/* Portfolio Investment Summary */}
                         <div className="mt-4 bg-blue-50 p-4 rounded-lg border border-blue-100">
-                          <h6 className="text-lg font-semibold text-blue-800 mb-2">Investment Summary</h6>
+                          <div className="flex justify-between items-center mb-2">
+                            <h6 className="text-lg font-semibold text-blue-800">Investment Summary</h6>
+                            <button 
+                              onClick={generatePDFReport}
+                              className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center"
+                            >
+                              <Download size={16} className="mr-1" />
+                              <span>Download Report</span>
+                            </button>
+                          </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <p className="text-sm text-gray-600">Initial Investment</p>
