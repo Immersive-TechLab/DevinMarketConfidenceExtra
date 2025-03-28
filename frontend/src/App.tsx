@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend } from 'recharts';
 import { Search, Plus, Edit, Trash, X } from 'lucide-react';
 
 interface MarketData {
@@ -532,348 +532,163 @@ function App() {
 
         {activeTab === 'market' ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Market Data Chart */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="p-4 border-b">
-                <h5 className="text-xl font-bold">MSCI World Index</h5>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  <button 
-                    className={`px-3 py-1 text-xs rounded-md ${selectedPeriod === '1mo' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-                    onClick={() => setSelectedPeriod('1mo')}
-                  >
-                    1mo
-                  </button>
-                  <button 
-                    className={`px-3 py-1 text-xs rounded-md ${selectedPeriod === '3mo' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-                    onClick={() => setSelectedPeriod('3mo')}
-                  >
-                    3mo
-                  </button>
-                  <button 
-                    className={`px-3 py-1 text-xs rounded-md ${selectedPeriod === '6mo' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-                    onClick={() => setSelectedPeriod('6mo')}
-                  >
-                    6mo
-                  </button>
-                  <button 
-                    className={`px-3 py-1 text-xs rounded-md ${selectedPeriod === '1y' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-                    onClick={() => setSelectedPeriod('1y')}
-                  >
-                    1y
-                  </button>
-                  <button 
-                    className={`px-3 py-1 text-xs rounded-md ${selectedPeriod === '5y' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-                    onClick={() => setSelectedPeriod('5y')}
-                  >
-                    5y
-                  </button>
-                  <button 
-                    className={`px-3 py-1 text-xs rounded-md ${selectedPeriod === 'max' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-                    onClick={() => setSelectedPeriod('max')}
-                  >
-                    max
-                  </button>
+            {/* Market Data Chart */}
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                <div className="p-4 border-b">
+                  <h5 className="text-xl font-bold">MSCI World Index</h5>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <button 
+                      className={`px-3 py-1 text-xs rounded-md ${selectedPeriod === '1mo' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                      onClick={() => setSelectedPeriod('1mo')}
+                    >
+                      1mo
+                    </button>
+                    <button 
+                      className={`px-3 py-1 text-xs rounded-md ${selectedPeriod === '3mo' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                      onClick={() => setSelectedPeriod('3mo')}
+                    >
+                      3mo
+                    </button>
+                    <button 
+                      className={`px-3 py-1 text-xs rounded-md ${selectedPeriod === '6mo' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                      onClick={() => setSelectedPeriod('6mo')}
+                    >
+                      6mo
+                    </button>
+                    <button 
+                      className={`px-3 py-1 text-xs rounded-md ${selectedPeriod === '1y' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                      onClick={() => setSelectedPeriod('1y')}
+                    >
+                      1y
+                    </button>
+                    <button 
+                      className={`px-3 py-1 text-xs rounded-md ${selectedPeriod === '5y' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                      onClick={() => setSelectedPeriod('5y')}
+                    >
+                      5y
+                    </button>
+                    <button 
+                      className={`px-3 py-1 text-xs rounded-md ${selectedPeriod === 'max' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                      onClick={() => setSelectedPeriod('max')}
+                    >
+                      max
+                    </button>
+                  </div>
+                </div>
+                <div className="p-4">
+                  {isLoading ? (
+                    <div className="h-80 flex items-center justify-center">
+                      <p>Loading market data...</p>
+                    </div>
+                  ) : marketData.length > 0 ? (
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart
+                          data={marketData}
+                          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis 
+                            dataKey="date" 
+                            tickFormatter={(tick) => {
+                              const date = new Date(tick);
+                              return date.toLocaleDateString('en-US', { month: 'numeric', year: '2-digit' });
+                            }}
+                          />
+                          <YAxis 
+                            domain={['auto', 'auto']}
+                            tickFormatter={(tick) => `$${tick}`}
+                          />
+                          <Tooltip content={<CustomTooltip />} />
+                          <Line 
+                            type="monotone" 
+                            dataKey="close" 
+                            stroke="#3b82f6" 
+                            dot={false} 
+                            activeDot={{ r: 8 }} 
+                          />
+                          
+                          {/* Highlight event period if available */}
+                          {highlightPeriod && (
+                            <>
+                              <ReferenceLine 
+                                x={highlightPeriod.start} 
+                                stroke="#ef4444" 
+                                strokeWidth={2}
+                                label={{ value: 'Event Start', position: 'top' }}
+                              />
+                              <ReferenceLine 
+                                x={highlightPeriod.end} 
+                                stroke="#ef4444" 
+                                strokeWidth={2}
+                                label={{ value: 'Event End', position: 'top' }}
+                              />
+                            </>
+                          )}
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="h-80 flex items-center justify-center">
+                      <p>No market data available</p>
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="p-4">
-                {isLoading ? (
-                  <div className="h-80 flex items-center justify-center">
-                    <p>Loading market data...</p>
-                  </div>
-                ) : marketData.length > 0 ? (
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={marketData}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis 
-                          dataKey="date" 
-                          tickFormatter={(tick) => {
-                            const date = new Date(tick);
-                            return date.toLocaleDateString('en-US', { month: 'numeric', year: '2-digit' });
-                          }}
-                        />
-                        <YAxis 
-                          domain={['auto', 'auto']}
-                          tickFormatter={(tick) => `$${tick}`}
-                        />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Line 
-                          type="monotone" 
-                          dataKey="close" 
-                          stroke="#3b82f6" 
-                          dot={false} 
-                          activeDot={{ r: 8 }} 
-                        />
-                        
-                        {/* Highlight event period if available */}
-                        {highlightPeriod && (
-                          <>
-                            <ReferenceLine 
-                              x={highlightPeriod.start} 
-                              stroke="#ef4444" 
-                              strokeWidth={2}
-                              label={{ value: 'Event Start', position: 'top' }}
-                            />
-                            <ReferenceLine 
-                              x={highlightPeriod.end} 
-                              stroke="#ef4444" 
-                              strokeWidth={2}
-                              label={{ value: 'Event End', position: 'top' }}
-                            />
-                          </>
-                        )}
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                ) : (
-                  <div className="h-80 flex items-center justify-center">
-                    <p>No market data available</p>
-                  </div>
-                )}
-              </div>
             </div>
-          </div>
 
-          {/* Market Event Analysis */}
-          <div>
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="p-4 border-b">
-                <h5 className="text-xl font-bold">Market Event Analysis</h5>
-              </div>
-              <div className="p-4">
-                <div className="space-y-4">
-                  <p className="text-gray-600">
-                    Welcome! Enter a global event (e.g., "COVID-19 pandemic", "2008 financial crisis") to see its impact on the MSCI World Index.
-                  </p>
-                  
-                  <div className="flex flex-col gap-2">
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <input
-                          type="text"
-                          placeholder="Enter a global event..."
-                          value={eventInput}
-                          onChange={(e) => setEventInput(e.target.value)}
-                          onKeyUp={handleKeyPress}
-                          className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                      </div>
-                      <button 
-                        onClick={() => {
-                          if (eventInput.trim()) {
-                            handleEventAnalysis();
-                          }
-                        }}
-                        className={`px-4 py-2 rounded-md ${isAnalyzing ? 'bg-gray-300 cursor-not-allowed' : eventInput.trim() ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-300 cursor-not-allowed'}`}
+            {/* Market Event Analysis Instructions */}
+            <div>
+              <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                <div className="p-4 border-b">
+                  <h5 className="text-xl font-bold">Market Event Analysis</h5>
+                </div>
+                <div className="p-4">
+                  <div className="space-y-4">
+                    <p className="text-gray-600">
+                      Welcome! This section shows the MSCI World Index performance over time.
+                    </p>
+                    <p className="text-gray-600">
+                      To analyze how market events impact your portfolio and get personalized investment advice:
+                    </p>
+                    <ol className="list-decimal pl-5 space-y-2 text-gray-600">
+                      <li>Switch to the <span className="font-semibold">Portfolio Management</span> tab</li>
+                      <li>Select or create a portfolio</li>
+                      <li>Enter a global event (e.g., "COVID-19 pandemic") in the Event Analysis section</li>
+                      <li>View simulation results showing different investment strategies</li>
+                    </ol>
+                    <div className="mt-4">
+                      <button
+                        onClick={() => setActiveTab('portfolio')}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                       >
-                        {isAnalyzing ? 'Analyzing...' : 'Analyze'}
+                        Go to Portfolio Management
                       </button>
                     </div>
-                  </div>
-                  
-                  {eventAnalysis && (
-                    <div className="mt-6 space-y-4">
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <h3 className="font-semibold text-blue-800">{eventAnalysis.event}</h3>
-                        <p className="mt-2 text-gray-700">{eventAnalysis.analysis}</p>
-                      </div>
-                      
-                      <div className="border-t pt-4">
-                        <h4 className="font-semibold mb-2">Event Analysis:</h4>
-                        <div className="space-y-2">
-                          <p><span className="font-medium">Market Impact:</span> {eventAnalysis.percent_change.toFixed(2)}%</p>
-                          <p><span className="font-medium">Recovery Status:</span> {eventAnalysis.recovery_status}</p>
-                          <p><span className="font-medium">Time Period:</span> {eventAnalysis.time_period.start_date} to {eventAnalysis.time_period.end_date}</p>
+                    
+                    {eventAnalysis && (
+                      <div className="mt-6 space-y-4">
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                          <h3 className="font-semibold text-blue-800">{eventAnalysis.event}</h3>
+                          <p className="mt-2 text-gray-700">{eventAnalysis.analysis}</p>
                         </div>
                         
-                        {currentPortfolio && (
-                          <button
-                            onClick={simulateEventImpact}
-                            className={`mt-4 px-4 py-2 rounded-md ${isSimulating ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-                            disabled={isSimulating}
-                          >
-                            {isSimulating ? 'Simulating...' : `Simulate Impact on ${currentPortfolio.name}`}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Event Simulation Results */}
-                  {eventSimulation && (
-                    <div className="mt-6 bg-white rounded-lg shadow-md overflow-hidden">
-                      <div className="p-4 border-b">
-                        <h5 className="text-xl font-bold">Event Impact Simulation</h5>
-                        <p className="text-gray-600">How different strategies would have performed during {eventSimulation.event}</p>
-                      </div>
-                      
-                      <div className="p-4">
-                        <div className="h-80">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <LineChart
-                              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                            >
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis 
-                                dataKey="date" 
-                                type="category"
-                                allowDuplicatedCategory={false}
-                                tickFormatter={(tick) => {
-                                  const date = new Date(tick);
-                                  return date.toLocaleDateString('en-US', { month: 'numeric', year: '2-digit' });
-                                }}
-                              />
-                              <YAxis 
-                                domain={['auto', 'auto']}
-                                tickFormatter={(tick) => `$${tick.toFixed(0)}`}
-                              />
-                              <Tooltip content={<CustomTooltip />} />
-                              
-                              {/* Reference line for middle date */}
-                              <ReferenceLine
-                                x={eventSimulation.time_period.middle_date}
-                                stroke="#ff0000"
-                                strokeDasharray="3 3"
-                                label={{ value: 'Decision Point', position: 'top', fill: '#ff0000', fontSize: 12 }}
-                              />
-                              
-                              {eventSimulation.simulation_results.map((result, index) => {
-                                const colors = ['#3b82f6', '#10b981', '#ef4444'];
-                                return (
-                                  <Line
-                                    key={result.scenario}
-                                    data={result.performance}
-                                    type="monotone"
-                                    dataKey="value"
-                                    name={result.scenario}
-                                    stroke={colors[index % colors.length]}
-                                    dot={false}
-                                    strokeWidth={2}
-                                  />
-                                );
-                              })}
-                            </LineChart>
-                          </ResponsiveContainer>
-                        </div>
-                        
-                        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                          {eventSimulation.simulation_results.map((result) => (
-                            <div key={result.scenario} className={`p-4 rounded-lg ${
-                              result.scenario === eventSimulation.advice.best_scenario 
-                                ? 'bg-blue-50 border border-blue-200' 
-                                : 'bg-gray-50'
-                            }`}>
-                              <h6 className="font-semibold mb-2">{result.scenario}</h6>
-                              <div className="space-y-1 text-sm">
-                                <p>
-                                  <span className="font-medium">Total Return:</span> 
-                                  <span className={result.total_return >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                    {result.total_return.toFixed(2)}%
-                                  </span>
-                                </p>
-                                <p><span className="font-medium">Max Drawdown:</span> {result.max_drawdown.toFixed(2)}%</p>
-                                <p>
-                                  <span className="font-medium">Recovery Period:</span> 
-                                  {result.recovery_days ? `${result.recovery_days} days` : 'No recovery'}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        
-                        <div className="mt-6 bg-blue-50 p-4 rounded-lg">
-                          <h6 className="font-semibold mb-2">Investment Advice</h6>
-                          <p className="text-gray-700">{eventSimulation.advice.text}</p>
-                          <p className="mt-2 font-medium">
-                            Best Strategy: 
-                            <span className={`ml-2 ${
-                              eventSimulation.advice.best_scenario === 'No Changes' ? 'text-blue-600' :
-                              eventSimulation.advice.best_scenario === '20% Withdrawal' ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              {eventSimulation.advice.best_scenario}
-                            </span>
-                          </p>
-                        </div>
-                        
-                        {/* Individual Asset Performance */}
-                        {eventSimulation.asset_performance && Object.keys(eventSimulation.asset_performance).length > 0 && (
-                          <div className="mt-6">
-                            <h6 className="font-semibold mb-2">Asset Performance During Event</h6>
-                            <div className="grid grid-cols-1 gap-4">
-                              {Object.entries(eventSimulation.asset_performance).map(([symbol, data]) => (
-                                <div key={symbol} className="bg-gray-50 p-4 rounded-lg">
-                                  <div className="flex justify-between items-center mb-2">
-                                    <h6 className="font-semibold">
-                                      {symbol} - {data.name}
-                                      <span className="ml-2 text-sm text-gray-500">
-                                        {data.allocation.toFixed(2)}% of portfolio
-                                      </span>
-                                    </h6>
-                                  </div>
-                                  
-                                  <div className="h-40">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                      <LineChart
-                                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                                      >
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis 
-                                          dataKey="date" 
-                                          type="category"
-                                          allowDuplicatedCategory={false}
-                                          tickFormatter={(tick) => {
-                                            const date = new Date(tick);
-                                            return date.toLocaleDateString('en-US', { month: 'numeric', year: '2-digit' });
-                                          }}
-                                        />
-                                        <YAxis 
-                                          domain={['auto', 'auto']}
-                                          tickFormatter={(tick) => `$${tick.toFixed(2)}`}
-                                        />
-                                        <Tooltip content={<CustomTooltip />} />
-                                        
-                                        {/* Reference line for middle date */}
-                                        <ReferenceLine
-                                          x={eventSimulation.time_period.middle_date}
-                                          stroke="#ff0000"
-                                          strokeDasharray="3 3"
-                                          label={{ value: 'Decision Point', position: 'top', fill: '#ff0000', fontSize: 12 }}
-                                        />
-                                        
-                                        <Line
-                                          data={data.performance.map(point => ({
-                                            date: point.date,
-                                            value: point.close * (data.allocation / 100) * 
-                                              (currentPortfolio?.investment_amount || 1)
-                                          }))}
-                                          type="monotone"
-                                          dataKey="value"
-                                          name={symbol}
-                                          stroke="#3b82f6"
-                                          dot={false}
-                                          strokeWidth={2}
-                                        />
-                                      </LineChart>
-                                    </ResponsiveContainer>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                        <div className="border-t pt-4">
+                          <h4 className="font-semibold mb-2">Event Analysis:</h4>
+                          <div className="space-y-2">
+                            <p><span className="font-medium">Market Impact:</span> {eventAnalysis.percent_change.toFixed(2)}%</p>
+                            <p><span className="font-medium">Recovery Status:</span> {eventAnalysis.recovery_status}</p>
+                            <p><span className="font-medium">Time Period:</span> {eventAnalysis.time_period.start_date} to {eventAnalysis.time_period.end_date}</p>
                           </div>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Portfolio List and Management */}
@@ -984,16 +799,19 @@ function App() {
                       </button>
                     </div>
                     
-                    {/* Add event analysis button */}
+                    {/* Event Analysis Section */}
                     {currentPortfolio && portfolioPerformance.length > 0 && (
-                      <div className="mt-4">
-                        <h6 className="font-medium mb-2">Event Analysis</h6>
-                        <div className="flex flex-col gap-2">
+                      <div className="mt-4 bg-white p-4 rounded-lg border border-blue-100">
+                        <h6 className="font-medium text-blue-800 mb-3">Market Event Analysis</h6>
+                        <p className="text-sm text-gray-600 mb-3">
+                          Analyze how global events impact your portfolio and get personalized investment advice.
+                        </p>
+                        <div className="flex flex-col gap-3">
                           <div className="flex gap-2">
                             <div className="relative flex-1">
                               <input
                                 type="text"
-                                placeholder="Enter a global event..."
+                                placeholder="Enter a global event (e.g., COVID-19 pandemic)..."
                                 value={eventInput}
                                 onChange={(e) => setEventInput(e.target.value)}
                                 onKeyUp={handleKeyPress}
@@ -1014,13 +832,34 @@ function App() {
                           </div>
                           
                           {eventAnalysis && (
-                            <button
-                              onClick={simulateEventImpact}
-                              className={`mt-2 px-4 py-2 rounded-md ${isSimulating ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-                              disabled={isSimulating}
-                            >
-                              {isSimulating ? 'Simulating...' : `Simulate Impact on ${currentPortfolio.name}`}
-                            </button>
+                            <div className="mt-2 space-y-3">
+                              <div className="bg-blue-50 p-3 rounded-lg">
+                                <h3 className="font-semibold text-blue-800">{eventAnalysis.event}</h3>
+                                <p className="mt-2 text-sm text-gray-700">{eventAnalysis.analysis}</p>
+                                <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                                  <div>
+                                    <span className="font-medium">Market Impact:</span> 
+                                    <span className={eventAnalysis.percent_change >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                      {eventAnalysis.percent_change.toFixed(2)}%
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Recovery:</span> {eventAnalysis.recovery_status}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">Period:</span> {eventAnalysis.time_period.start_date.substring(0, 7)} to {eventAnalysis.time_period.end_date.substring(0, 7)}
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <button
+                                onClick={simulateEventImpact}
+                                className={`w-full px-4 py-2 rounded-md ${isSimulating ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                                disabled={isSimulating}
+                              >
+                                {isSimulating ? 'Simulating...' : `Simulate Impact on ${currentPortfolio.name}`}
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -1159,69 +998,111 @@ function App() {
                             </p>
                           </div>
                           
-                          {/* Individual Asset Performance */}
+                          {/* Asset Performance Chart */}
                           {eventSimulation.asset_performance && Object.keys(eventSimulation.asset_performance).length > 0 && (
-                            <div className="mt-6">
-                              <h6 className="font-semibold mb-2">Asset Performance During Event</h6>
-                              <div className="grid grid-cols-1 gap-4">
-                                {Object.entries(eventSimulation.asset_performance).map(([symbol, data]) => (
-                                  <div key={symbol} className="bg-gray-50 p-4 rounded-lg">
-                                    <div className="flex justify-between items-center mb-2">
-                                      <h6 className="font-semibold">
-                                        {symbol} - {data.name}
-                                        <span className="ml-2 text-sm text-gray-500">
-                                          {data.allocation.toFixed(2)}% of portfolio
-                                        </span>
-                                      </h6>
-                                    </div>
+                            <div className="mt-8 bg-white p-4 rounded-lg border border-gray-200">
+                              <h6 className="text-lg font-semibold mb-4 text-blue-800">Portfolio Assets Performance During Event</h6>
+                              <p className="text-sm text-gray-600 mb-4">
+                                See how each asset in your portfolio performed during {eventSimulation.event} on a single chart.
+                              </p>
+                              
+                              {/* Combined Performance Chart */}
+                              <div className="h-80 mb-6">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <LineChart
+                                    margin={{ top: 10, right: 30, left: 10, bottom: 10 }}
+                                  >
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis 
+                                      dataKey="date" 
+                                      type="category"
+                                      allowDuplicatedCategory={false}
+                                      tickFormatter={(tick) => {
+                                        const date = new Date(tick);
+                                        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+                                      }}
+                                      tick={{ fontSize: 12 }}
+                                    />
+                                    <YAxis 
+                                      domain={['auto', 'auto']}
+                                      tickFormatter={(tick) => `$${tick.toFixed(0)}`}
+                                      tick={{ fontSize: 12 }}
+                                      width={50}
+                                    />
+                                    <Tooltip content={<CustomTooltip />} />
+                                    <Legend />
                                     
-                                    <div className="h-40">
-                                      <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart
-                                          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                                        >
-                                          <CartesianGrid strokeDasharray="3 3" />
-                                          <XAxis 
-                                            dataKey="date" 
-                                            type="category"
-                                            allowDuplicatedCategory={false}
-                                            tickFormatter={(tick) => {
-                                              const date = new Date(tick);
-                                              return date.toLocaleDateString('en-US', { month: 'numeric', year: '2-digit' });
-                                            }}
-                                          />
-                                          <YAxis 
-                                            domain={['auto', 'auto']}
-                                            tickFormatter={(tick) => `$${tick.toFixed(2)}`}
-                                          />
-                                          <Tooltip content={<CustomTooltip />} />
-                                          
-                                          {/* Reference line for middle date */}
-                                          <ReferenceLine
-                                            x={eventSimulation.time_period.middle_date}
-                                            stroke="#ff0000"
-                                            strokeDasharray="3 3"
-                                            label={{ value: 'Decision Point', position: 'top', fill: '#ff0000', fontSize: 12 }}
-                                          />
-                                          
-                                          <Line
-                                            data={data.performance.map(point => ({
-                                              date: point.date,
-                                              value: point.close * (data.allocation / 100) * 
-                                                (currentPortfolio?.investment_amount || 1)
-                                            }))}
-                                            type="monotone"
-                                            dataKey="value"
-                                            name={symbol}
-                                            stroke="#3b82f6"
-                                            dot={false}
-                                            strokeWidth={2}
-                                          />
-                                        </LineChart>
-                                      </ResponsiveContainer>
+                                    {/* Reference line for middle date */}
+                                    <ReferenceLine
+                                      x={eventSimulation.time_period.middle_date}
+                                      stroke="#ff0000"
+                                      strokeDasharray="3 3"
+                                      label={{ value: 'Decision Point', position: 'top', fill: '#ff0000', fontSize: 12 }}
+                                    />
+                                    
+                                    {/* Generate a line for each asset */}
+                                    {Object.entries(eventSimulation.asset_performance).map(([symbol, data], index) => {
+                                      const colors = [
+                                        "#3b82f6", // blue
+                                        "#10b981", // green
+                                        "#f59e0b", // amber
+                                        "#8b5cf6", // violet
+                                        "#ec4899", // pink
+                                        "#06b6d4", // cyan
+                                        "#f43f5e", // rose
+                                        "#84cc16"  // lime
+                                      ];
+                                      
+                                      const colorIndex = index % colors.length;
+                                      
+                                      return (
+                                        <Line
+                                          key={symbol}
+                                          data={data.performance.map(point => ({
+                                            date: point.date,
+                                            value: point.close * (data.allocation / 100) * 
+                                              (currentPortfolio?.investment_amount || 1)
+                                          }))}
+                                          type="monotone"
+                                          dataKey="value"
+                                          name={symbol}
+                                          stroke={colors[colorIndex]}
+                                          dot={false}
+                                          strokeWidth={2}
+                                          activeDot={{ r: 6 }}
+                                        />
+                                      );
+                                    })}
+                                  </LineChart>
+                                </ResponsiveContainer>
+                              </div>
+                              
+                              {/* Asset Performance Summary */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                {Object.entries(eventSimulation.asset_performance).map(([symbol, data]) => {
+                                  const startValue = data.performance[0]?.close || 0;
+                                  const endValue = data.performance[data.performance.length - 1]?.close || 0;
+                                  const percentChange = startValue > 0 ? ((endValue - startValue) / startValue) * 100 : 0;
+                                  const dollarValue = (data.allocation / 100) * (currentPortfolio?.investment_amount || 0);
+                                  
+                                  return (
+                                    <div key={symbol} className="bg-gray-50 p-3 rounded-lg border border-gray-200 shadow-sm">
+                                      <div className="flex justify-between items-center mb-2">
+                                        <h6 className="font-semibold text-gray-800">
+                                          {symbol}
+                                        </h6>
+                                        <div className={`text-sm font-bold ${percentChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                          {percentChange >= 0 ? '+' : ''}{percentChange.toFixed(2)}%
+                                        </div>
+                                      </div>
+                                      <p className="text-xs text-gray-500 mb-2">{data.name}</p>
+                                      <div className="flex justify-between text-xs">
+                                        <span>{data.allocation.toFixed(2)}%</span>
+                                        <span>{formatCurrency(dollarValue)}</span>
+                                      </div>
                                     </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             </div>
                           )}
@@ -1314,8 +1195,8 @@ function App() {
             {/* Portfolio Modal */}
             {(isCreatingPortfolio || isEditingPortfolio) && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-                  <div className="p-4 border-b flex justify-between items-center">
+                <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] overflow-y-auto">
+                  <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center z-10">
                     <h5 className="text-xl font-bold">{isEditingPortfolio ? 'Edit Portfolio' : 'Create Portfolio'}</h5>
                     <button 
                       onClick={() => {
@@ -1326,41 +1207,47 @@ function App() {
                         setInvestmentAmount(undefined);
                       }}
                       className="text-gray-500 hover:text-gray-700"
+                      aria-label="Close"
                     >
                       <X size={20} />
                     </button>
                   </div>
                   <div className="p-6">
                     <div className="space-y-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Portfolio Name</label>
-                        <input
-                          type="text"
-                          value={portfolioName}
-                          onChange={(e) => setPortfolioName(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="My Portfolio"
-                        />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label htmlFor="portfolio-name" className="block text-sm font-medium text-gray-700 mb-1">Portfolio Name</label>
+                          <input
+                            id="portfolio-name"
+                            type="text"
+                            value={portfolioName}
+                            onChange={(e) => setPortfolioName(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="My Portfolio"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label htmlFor="investment-amount" className="block text-sm font-medium text-gray-700 mb-1">Investment Amount ($)</label>
+                          <input
+                            id="investment-amount"
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={investmentAmount || ''}
+                            onChange={(e) => setInvestmentAmount(e.target.value ? Number(e.target.value) : undefined)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter investment amount in dollars"
+                          />
+                        </div>
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Investment Amount ($)</label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={investmentAmount || ''}
-                          onChange={(e) => setInvestmentAmount(e.target.value ? Number(e.target.value) : undefined)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Enter investment amount in dollars"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Add Assets</label>
+                        <label htmlFor="asset-search" className="block text-sm font-medium text-gray-700 mb-2">Add Assets</label>
                         <div className="flex gap-2">
                           <div className="relative flex-1">
                             <input
+                              id="asset-search"
                               type="text"
                               value={assetSearchQuery}
                               onChange={handleAssetSearchInputChange}
@@ -1370,14 +1257,15 @@ function App() {
                                 }
                               }}
                               className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="Search by symbol or name"
+                              placeholder="Search by symbol or name (e.g., AAPL, Apple)"
+                              aria-label="Search assets"
                             />
                             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                             
                             {/* Suggestions Dropdown */}
                             {searchResults.length > 0 && (
                               <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                                <ul className="py-1">
+                                <ul className="py-1" role="listbox">
                                   {searchResults.map((asset) => (
                                     <li 
                                       key={asset.symbol}
@@ -1387,6 +1275,7 @@ function App() {
                                         setSearchResults([]);
                                         setAssetSearchQuery('');
                                       }}
+                                      role="option"
                                     >
                                       <div>
                                         <span className="font-medium">{asset.symbol}</span>
@@ -1403,6 +1292,7 @@ function App() {
                             onClick={() => searchAssets()}
                             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md"
                             disabled={!assetSearchQuery.trim()}
+                            aria-label="Search for assets"
                           >
                             Search
                           </button>
@@ -1413,50 +1303,54 @@ function App() {
                       {portfolioAssets.length > 0 && (
                         <div>
                           <h6 className="text-sm font-medium text-gray-700 mb-2">Portfolio Composition</h6>
-                          <div className="border border-gray-200 rounded-md overflow-x-auto">
-                            <table className="w-full divide-y divide-gray-200">
-                              <thead className="bg-gray-50">
-                                <tr>
-                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Symbol</th>
-                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/6">Name</th>
-                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Type</th>
-                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Allocation %</th>
-                                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody className="bg-white divide-y divide-gray-200">
-                                {portfolioAssets.map((asset) => (
-                                  <tr key={asset.symbol}>
-                                    <td className="px-3 py-2 whitespace-nowrap">{asset.symbol}</td>
-                                    <td className="px-3 py-2 whitespace-nowrap">{asset.name}</td>
-                                    <td className="px-3 py-2 whitespace-nowrap">{asset.type}</td>
-                                    <td className="px-3 py-2 whitespace-nowrap">
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        value={asset.allocation}
-                                        onChange={(e) => updateAssetAllocation(asset.symbol, parseFloat(e.target.value))}
-                                        className="w-16 px-2 py-1 border border-gray-300 rounded-md"
-                                      />
-                                    </td>
-                                    <td className="px-3 py-2 whitespace-nowrap text-right">
-                                      <button
-                                        onClick={() => removeAssetFromPortfolio(asset.symbol)}
-                                        className="text-red-500 hover:text-red-700"
-                                      >
-                                        <X size={16} />
-                                      </button>
-                                    </td>
+                          <div className="border border-gray-200 rounded-md overflow-hidden">
+                            <div className="overflow-x-auto max-h-[300px]">
+                              <table className="w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50 sticky top-0">
+                                  <tr>
+                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Symbol</th>
+                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Allocation %</th>
+                                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                   </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                  {portfolioAssets.map((asset) => (
+                                    <tr key={asset.symbol}>
+                                      <td className="px-3 py-2 whitespace-nowrap">{asset.symbol}</td>
+                                      <td className="px-3 py-2 whitespace-nowrap">{asset.name}</td>
+                                      <td className="px-3 py-2 whitespace-nowrap">{asset.type}</td>
+                                      <td className="px-3 py-2 whitespace-nowrap">
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          max="100"
+                                          value={asset.allocation}
+                                          onChange={(e) => updateAssetAllocation(asset.symbol, parseFloat(e.target.value))}
+                                          className="w-20 px-2 py-1 border border-gray-300 rounded-md"
+                                          aria-label={`Allocation percentage for ${asset.symbol}`}
+                                        />
+                                      </td>
+                                      <td className="px-3 py-2 whitespace-nowrap text-right">
+                                        <button
+                                          onClick={() => removeAssetFromPortfolio(asset.symbol)}
+                                          className="text-red-500 hover:text-red-700"
+                                          aria-label={`Remove ${asset.symbol} from portfolio`}
+                                        >
+                                          <X size={16} />
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
                           </div>
                         </div>
                       )}
                       
-                      <div className="flex justify-end space-x-2 pt-4">
+                      <div className="flex justify-end space-x-3 pt-4 sticky bottom-0 bg-white pb-2">
                         <button
                           onClick={() => {
                             setIsCreatingPortfolio(false);
@@ -1465,13 +1359,13 @@ function App() {
                             setPortfolioAssets([]);
                             setInvestmentAmount(undefined);
                           }}
-                          className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                          className="px-5 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                         >
                           Cancel
                         </button>
                         <button
                           onClick={savePortfolio}
-                          className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+                          className="px-5 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
                         >
                           {isEditingPortfolio ? 'Update Portfolio' : 'Create Portfolio'}
                         </button>
