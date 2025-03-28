@@ -79,18 +79,6 @@ interface EventSimulation {
   };
 }
 
-interface PortfolioReport {
-  name: string;
-  date: string;
-  investment: number;
-  currentValue: number;
-  assets: PortfolioAsset[];
-  metrics: {
-    totalReturn: number;
-    maxDrawdown: number;
-    volatility: number;
-  };
-}
 
 function App() {
   const [marketData, setMarketData] = useState<MarketData[]>([]);
@@ -562,13 +550,18 @@ function App() {
       console.log('Creating PDF document');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      pdf.setFillColor(59, 130, 246);
+      pdf.rect(0, 0, pageWidth, 20, 'F');
       
       pdf.setFontSize(18);
-      pdf.setTextColor(59, 130, 246); // Blue color
-      pdf.text('Market Confidence', pageWidth / 2, 15, { align: 'center' });
+      pdf.setTextColor(255, 255, 255); // White color for header
+      pdf.text('Market Confidence', pageWidth / 2, 13, { align: 'center' });
       
-      pdf.setFontSize(14);
-      pdf.text(`Portfolio Report: ${currentPortfolio.name}`, pageWidth / 2, 25, { align: 'center' });
+      pdf.setFontSize(16);
+      pdf.setTextColor(59, 130, 246); // Blue color
+      pdf.text(`Portfolio Report: ${currentPortfolio.name}`, pageWidth / 2, 30, { align: 'center' });
       
       pdf.setFontSize(10);
       pdf.setTextColor(100, 100, 100); // Gray color
@@ -577,11 +570,15 @@ function App() {
         month: 'long', 
         day: 'numeric' 
       });
-      pdf.text(`Generated on: ${creationDate}`, pageWidth / 2, 32, { align: 'center' });
+      pdf.text(`Generated on: ${creationDate}`, pageWidth / 2, 37, { align: 'center' });
       
-      pdf.setFontSize(12);
-      pdf.setTextColor(0, 0, 0);
-      pdf.text('Investment Summary', 14, 45);
+      pdf.setDrawColor(59, 130, 246);
+      pdf.setLineWidth(0.5);
+      pdf.line(14, 40, pageWidth - 14, 40);
+      
+      pdf.setFontSize(14);
+      pdf.setTextColor(59, 130, 246);
+      pdf.text('Investment Summary', 14, 50);
       
       console.log('Adding investment data');
       const investmentData = [
@@ -590,28 +587,167 @@ function App() {
         ['Total Return', `${portfolioMetrics.totalReturn >= 0 ? '+' : ''}${portfolioMetrics.totalReturn.toFixed(2)}%`]
       ];
       
-      console.log('Creating first table');
+      console.log('Creating investment table');
       try {
         autoTable(pdf, {
-          startY: 50,
+          startY: 55,
           head: [['Metric', 'Value']],
           body: investmentData,
           theme: 'grid',
-          headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255] },
-          styles: { overflow: 'linebreak', cellWidth: 'auto' },
+          headStyles: { 
+            fillColor: [59, 130, 246], 
+            textColor: [255, 255, 255],
+            fontStyle: 'bold'
+          },
+          alternateRowStyles: {
+            fillColor: [240, 247, 255]
+          },
+          styles: { 
+            overflow: 'linebreak', 
+            cellWidth: 'auto',
+            cellPadding: 4
+          },
           margin: { top: 10 }
         });
       } catch (tableError) {
         console.error('Error creating investment table:', tableError);
-        pdf.text('Initial Investment: ' + formatCurrency(portfolioMetrics.initialInvestment || 0), 14, 55);
-        pdf.text('Current Value: ' + formatCurrency(portfolioMetrics.currentValue || 0), 14, 62);
-        pdf.text('Total Return: ' + `${portfolioMetrics.totalReturn >= 0 ? '+' : ''}${portfolioMetrics.totalReturn.toFixed(2)}%`, 14, 69);
+        pdf.text('Initial Investment: ' + formatCurrency(portfolioMetrics.initialInvestment || 0), 14, 60);
+        pdf.text('Current Value: ' + formatCurrency(portfolioMetrics.currentValue || 0), 14, 67);
+        pdf.text('Total Return: ' + `${portfolioMetrics.totalReturn >= 0 ? '+' : ''}${portfolioMetrics.totalReturn.toFixed(2)}%`, 14, 74);
       }
       
-      let yPosition = 80; // Fallback position if autoTable fails
+      let yPosition = 85; // Fallback position if autoTable fails
       
       try {
-        yPosition = (pdf as any).lastAutoTable.finalY + 10;
+        yPosition = (pdf as any).lastAutoTable.finalY + 15;
+        
+        if (portfolioPerformance && portfolioPerformance.length > 0) {
+          pdf.setFontSize(14);
+          pdf.setTextColor(59, 130, 246);
+          pdf.text('Portfolio Performance', 14, yPosition);
+          
+          const canvas = document.createElement('canvas');
+          canvas.width = 800;
+          canvas.height = 400;
+          const ctx = canvas.getContext('2d');
+          
+          if (ctx) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const chartMargin = { top: 40, right: 40, bottom: 40, left: 60 };
+            const chartWidth = canvas.width - chartMargin.left - chartMargin.right;
+            const chartHeight = canvas.height - chartMargin.top - chartMargin.bottom;
+            
+            const values = portfolioPerformance.map(point => point.value);
+            const minValue = Math.min(...values) * 0.95;
+            const maxValue = Math.max(...values) * 1.05;
+            const valueRange = maxValue - minValue;
+            
+            ctx.strokeStyle = '#666666';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(chartMargin.left, chartMargin.top);
+            ctx.lineTo(chartMargin.left, chartHeight + chartMargin.top);
+            ctx.lineTo(chartWidth + chartMargin.left, chartHeight + chartMargin.top);
+            ctx.stroke();
+            
+            if (portfolioPerformance.length > 1) {
+              ctx.strokeStyle = '#3b82f6';
+              ctx.lineWidth = 3;
+              ctx.beginPath();
+              
+              portfolioPerformance.forEach((point, index) => {
+                const x = chartMargin.left + (index / (portfolioPerformance.length - 1)) * chartWidth;
+                const y = chartMargin.top + chartHeight - ((point.value - minValue) / valueRange) * chartHeight;
+                
+                if (index === 0) {
+                  ctx.moveTo(x, y);
+                } else {
+                  ctx.lineTo(x, y);
+                }
+              });
+              
+              ctx.stroke();
+              
+              const gradient = ctx.createLinearGradient(0, chartMargin.top, 0, chartHeight + chartMargin.top);
+              gradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
+              gradient.addColorStop(1, 'rgba(59, 130, 246, 0.05)');
+              
+              ctx.fillStyle = gradient;
+              ctx.beginPath();
+              ctx.moveTo(chartMargin.left, chartHeight + chartMargin.top);
+              
+              portfolioPerformance.forEach((point, index) => {
+                const x = chartMargin.left + (index / (portfolioPerformance.length - 1)) * chartWidth;
+                const y = chartMargin.top + chartHeight - ((point.value - minValue) / valueRange) * chartHeight;
+                ctx.lineTo(x, y);
+              });
+              
+              ctx.lineTo(chartWidth + chartMargin.left, chartHeight + chartMargin.top);
+              ctx.closePath();
+              ctx.fill();
+              
+              ctx.fillStyle = '#ffffff';
+              ctx.strokeStyle = '#3b82f6';
+              ctx.lineWidth = 2;
+              
+              const pointInterval = Math.max(1, Math.floor(portfolioPerformance.length / 10));
+              
+              portfolioPerformance.forEach((point, index) => {
+                if (index % pointInterval === 0 || index === portfolioPerformance.length - 1) {
+                  const x = chartMargin.left + (index / (portfolioPerformance.length - 1)) * chartWidth;
+                  const y = chartMargin.top + chartHeight - ((point.value - minValue) / valueRange) * chartHeight;
+                  
+                  ctx.beginPath();
+                  ctx.arc(x, y, 4, 0, Math.PI * 2);
+                  ctx.fill();
+                  ctx.stroke();
+                }
+              });
+              
+              ctx.fillStyle = '#666666';
+              ctx.font = '12px Arial';
+              ctx.textAlign = 'center';
+              
+              const dateLabels = [
+                portfolioPerformance[0].date,
+                portfolioPerformance[Math.floor(portfolioPerformance.length / 2)].date,
+                portfolioPerformance[portfolioPerformance.length - 1].date
+              ];
+              
+              dateLabels.forEach((date, index) => {
+                const x = chartMargin.left + (index / 2) * chartWidth;
+                ctx.fillText(formatDate(date), x, chartHeight + chartMargin.top + 20);
+              });
+              
+              ctx.textAlign = 'right';
+              const valueLabels = [
+                minValue,
+                minValue + valueRange / 2,
+                maxValue
+              ];
+              
+              valueLabels.forEach((value, index) => {
+                const y = chartMargin.top + chartHeight - (index / 2) * chartHeight;
+                ctx.fillText(formatCurrency(value), chartMargin.left - 10, y + 4);
+              });
+              
+              ctx.fillStyle = '#3b82f6';
+              ctx.font = 'bold 16px Arial';
+              ctx.textAlign = 'center';
+              ctx.fillText('Portfolio Value Over Time', canvas.width / 2, 20);
+            }
+            
+            const chartImage = canvas.toDataURL('image/png');
+            pdf.addImage(chartImage, 'PNG', 14, yPosition + 5, pageWidth - 28, 70);
+            
+            yPosition += 80;
+          }
+        }
+        
+        pdf.setFontSize(14);
+        pdf.setTextColor(59, 130, 246);
         pdf.text('Performance Metrics', 14, yPosition);
         
         const performanceData = [
@@ -625,12 +761,23 @@ function App() {
           head: [['Metric', 'Value']],
           body: performanceData,
           theme: 'grid',
-          headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255] },
-          styles: { overflow: 'linebreak', cellWidth: 'auto' },
+          headStyles: { 
+            fillColor: [59, 130, 246], 
+            textColor: [255, 255, 255],
+            fontStyle: 'bold'
+          },
+          alternateRowStyles: {
+            fillColor: [240, 247, 255]
+          },
+          styles: { 
+            overflow: 'linebreak', 
+            cellWidth: 'auto',
+            cellPadding: 4
+          },
           margin: { top: 10 }
         });
         
-        yPosition = (pdf as any).lastAutoTable.finalY + 10;
+        yPosition = (pdf as any).lastAutoTable.finalY + 15;
       } catch (tableError) {
         console.error('Error creating performance metrics table:', tableError);
         pdf.text('Performance Metrics', 14, yPosition);
@@ -640,6 +787,13 @@ function App() {
         yPosition += 30;
       }
       
+      if (yPosition > pageHeight - 80) {
+        pdf.addPage();
+        yPosition = 20;
+      }
+      
+      pdf.setFontSize(14);
+      pdf.setTextColor(59, 130, 246);
       pdf.text('Asset Allocation', 14, yPosition);
       
       try {
@@ -655,12 +809,101 @@ function App() {
           head: [['Symbol', 'Name', 'Allocation', 'Amount']],
           body: assetData,
           theme: 'grid',
-          headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255] },
-          styles: { overflow: 'linebreak', cellWidth: 'auto' },
+          headStyles: { 
+            fillColor: [59, 130, 246], 
+            textColor: [255, 255, 255],
+            fontStyle: 'bold'
+          },
+          alternateRowStyles: {
+            fillColor: [240, 247, 255]
+          },
+          styles: { 
+            overflow: 'linebreak', 
+            cellWidth: 'auto',
+            cellPadding: 4
+          },
           margin: { top: 10 }
         });
         
-        yPosition = (pdf as any).lastAutoTable.finalY + 10;
+        yPosition = (pdf as any).lastAutoTable.finalY + 15;
+        
+        if (currentPortfolio.assets.length > 0) {
+          const canvas = document.createElement('canvas');
+          canvas.width = 400;
+          canvas.height = 400;
+          const ctx = canvas.getContext('2d');
+          
+          if (ctx) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const colors = [
+              '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+              '#ec4899', '#06b6d4', '#84cc16', '#6366f1', '#14b8a6'
+            ];
+            
+            const total = currentPortfolio.assets.reduce((sum, asset) => sum + asset.allocation, 0);
+            
+            let startAngle = 0;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(centerX, centerY) - 40;
+            
+            ctx.fillStyle = '#3b82f6';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Asset Allocation', centerX, 30);
+            
+            currentPortfolio.assets.forEach((asset, index) => {
+              const sliceAngle = (asset.allocation / total) * 2 * Math.PI;
+              const endAngle = startAngle + sliceAngle;
+              
+              ctx.beginPath();
+              ctx.moveTo(centerX, centerY);
+              ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+              ctx.closePath();
+              
+              ctx.fillStyle = colors[index % colors.length];
+              ctx.fill();
+              
+              if (asset.allocation / total > 0.05) {
+                const midAngle = startAngle + sliceAngle / 2;
+                const labelRadius = radius * 0.7;
+                const labelX = centerX + Math.cos(midAngle) * labelRadius;
+                const labelY = centerY + Math.sin(midAngle) * labelRadius;
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(asset.symbol, labelX, labelY);
+              }
+              
+              startAngle = endAngle;
+            });
+            
+            const legendX = 40;
+            let legendY = canvas.height - 30 - (currentPortfolio.assets.length * 20);
+            
+            currentPortfolio.assets.forEach((asset, index) => {
+              ctx.fillStyle = colors[index % colors.length];
+              ctx.fillRect(legendX, legendY, 15, 15);
+              
+              ctx.fillStyle = '#333333';
+              ctx.font = '12px Arial';
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(`${asset.symbol} (${asset.allocation.toFixed(1)}%)`, legendX + 25, legendY + 7);
+              
+              legendY += 20;
+            });
+            
+            const chartImage = canvas.toDataURL('image/png');
+            pdf.addImage(chartImage, 'PNG', (pageWidth - 100) / 2, yPosition, 100, 100);
+            
+            yPosition += 110;
+          }
+        }
       } catch (tableError) {
         console.error('Error creating asset allocation table:', tableError);
         yPosition += 7;
@@ -674,11 +917,25 @@ function App() {
       if (eventSimulation && eventSimulation.event) {
         try {
           pdf.addPage();
-          pdf.text('Event Impact Analysis', 14, 15);
           
-          pdf.setFontSize(10);
-          pdf.text(`Event: ${eventSimulation.event}`, 14, 25);
-          pdf.text(`Analysis Period: ${formatDate(eventSimulation.time_period.start_date)} - ${formatDate(eventSimulation.time_period.end_date)}`, 14, 32);
+          pdf.setFillColor(59, 130, 246);
+          pdf.rect(0, 0, pageWidth, 20, 'F');
+          
+          pdf.setFontSize(18);
+          pdf.setTextColor(255, 255, 255);
+          pdf.text('Event Impact Analysis', pageWidth / 2, 13, { align: 'center' });
+          
+          pdf.setFontSize(14);
+          pdf.setTextColor(59, 130, 246);
+          pdf.text(`Event: ${eventSimulation.event}`, 14, 30);
+          
+          pdf.setFontSize(12);
+          pdf.setTextColor(100, 100, 100);
+          pdf.text(`Analysis Period: ${formatDate(eventSimulation.time_period.start_date)} - ${formatDate(eventSimulation.time_period.end_date)}`, 14, 40);
+          
+          pdf.setDrawColor(59, 130, 246);
+          pdf.setLineWidth(0.5);
+          pdf.line(14, 45, pageWidth - 14, 45);
           
           const scenarioData = eventSimulation.simulation_results.map(result => [
             result.scenario,
@@ -687,24 +944,46 @@ function App() {
             result.recovery_days ? `${result.recovery_days} days` : 'N/A'
           ]);
           
+          pdf.setFontSize(14);
+          pdf.setTextColor(59, 130, 246);
+          pdf.text('Scenario Comparison', 14, 55);
+          
           autoTable(pdf, {
-            startY: 40,
+            startY: 60,
             head: [['Scenario', 'Return', 'Max Drawdown', 'Recovery Time']],
             body: scenarioData,
             theme: 'grid',
-            headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255] },
-            styles: { overflow: 'linebreak', cellWidth: 'auto' },
+            headStyles: { 
+              fillColor: [59, 130, 246], 
+              textColor: [255, 255, 255],
+              fontStyle: 'bold'
+            },
+            alternateRowStyles: {
+              fillColor: [240, 247, 255]
+            },
+            styles: { 
+              overflow: 'linebreak', 
+              cellWidth: 'auto',
+              cellPadding: 4
+            },
             margin: { top: 10 }
           });
           
-          const lastY = (pdf as any).lastAutoTable.finalY;
+          const lastY = (pdf as any).lastAutoTable.finalY + 15;
           
           if (eventSimulation.advice && eventSimulation.advice.text) {
-            pdf.text('Investment Advice', 14, lastY + 10);
-            pdf.setFontSize(10);
+            pdf.setFontSize(14);
+            pdf.setTextColor(59, 130, 246);
+            pdf.text('Investment Advice', 14, lastY);
             
-            const splitText = pdf.splitTextToSize(eventSimulation.advice.text, pageWidth - 28);
-            pdf.text(splitText, 14, lastY + 20);
+            pdf.setFontSize(11);
+            pdf.setTextColor(50, 50, 50);
+            
+            pdf.setFillColor(240, 247, 255);
+            pdf.roundedRect(10, lastY + 5, pageWidth - 20, 50, 3, 3, 'F');
+            
+            const splitText = pdf.splitTextToSize(eventSimulation.advice.text, pageWidth - 30);
+            pdf.text(splitText, 15, lastY + 15);
           }
         } catch (eventError) {
           console.error('Error adding event analysis to PDF:', eventError);
@@ -717,7 +996,7 @@ function App() {
       setIsPdfPreviewOpen(true);
       
       console.log('Saving PDF file');
-      pdf.save(`${currentPortfolio.name}_Report.pdf`);
+      pdf.save(`Market_Confidence_${currentPortfolio.name}.pdf`);
       console.log('PDF saved successfully');
     } catch (error) {
       console.error('Error generating PDF report:', error);
