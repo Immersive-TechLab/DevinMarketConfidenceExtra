@@ -991,8 +991,9 @@ function App() {
       }
       
       console.log('Creating PDF preview');
-      const pdfDataUrl = pdf.output('datauristring');
-      setPdfPreviewUrl(pdfDataUrl);
+      const pdfBlob = pdf.output('blob');
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      setPdfPreviewUrl(pdfUrl);
       setIsPdfPreviewOpen(true);
       
       console.log('PDF preview ready');
