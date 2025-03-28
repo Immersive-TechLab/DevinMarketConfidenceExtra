@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceArea, Legend } from 'recharts';
 import { Search, Plus, Edit, Trash, X, Eye, EyeOff, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-import html2canvas from 'html2canvas';
+import autoTable from 'jspdf-autotable';
 
 interface MarketData {
   date: string;
@@ -123,6 +122,8 @@ function App() {
   } | null>(null);
   const [investmentAmount, setInvestmentAmount] = useState<number | undefined>(undefined);
   const [selectedAssets, setSelectedAssets] = useState<{[key: string]: boolean}>({}); // Track which assets are visible
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [isPdfPreviewOpen, setIsPdfPreviewOpen] = useState<boolean>(false);
   
   const significantEvents = [
     "COVID-19 pandemic",
@@ -544,120 +545,232 @@ function App() {
     }).format(value);
   };
   
-  const generatePDFReport = async () => {
-    if (!currentPortfolio || !portfolioMetrics) return;
+  const generatePDFReport = () => {
+    console.log('Generate PDF Report function called');
     
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    
-    pdf.setFontSize(18);
-    pdf.setTextColor(59, 130, 246); // Blue color
-    pdf.text('Market Confidence', pageWidth / 2, 15, { align: 'center' });
-    
-    pdf.setFontSize(14);
-    pdf.text(`Portfolio Report: ${currentPortfolio.name}`, pageWidth / 2, 25, { align: 'center' });
-    
-    pdf.setFontSize(10);
-    pdf.setTextColor(100, 100, 100); // Gray color
-    const creationDate = new Date().toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
-    pdf.text(`Generated on: ${creationDate}`, pageWidth / 2, 32, { align: 'center' });
-    
-    pdf.setFontSize(12);
-    pdf.setTextColor(0, 0, 0);
-    pdf.text('Investment Summary', 14, 45);
-    
-    const investmentData = [
-      ['Initial Investment', formatCurrency(portfolioMetrics.initialInvestment || 0)],
-      ['Current Value', formatCurrency(portfolioMetrics.currentValue || 0)],
-      ['Total Return', `${portfolioMetrics.totalReturn >= 0 ? '+' : ''}${portfolioMetrics.totalReturn.toFixed(2)}%`]
-    ];
-    
-    pdf.autoTable({
-      startY: 50,
-      head: [['Metric', 'Value']],
-      body: investmentData,
-      theme: 'grid',
-      headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255] },
-      styles: { overflow: 'linebreak', cellWidth: 'auto' },
-      margin: { top: 10 }
-    });
-    
-    pdf.text('Performance Metrics', 14, pdf.autoTable.previous.finalY + 10);
-    
-    const performanceData = [
-      ['Total Return', `${portfolioMetrics.totalReturn >= 0 ? '+' : ''}${portfolioMetrics.totalReturn.toFixed(2)}%`],
-      ['Max Drawdown', `-${portfolioMetrics.maxDrawdown.toFixed(2)}%`],
-      ['Volatility', `${portfolioMetrics.volatility.toFixed(2)}%`]
-    ];
-    
-    pdf.autoTable({
-      startY: pdf.autoTable.previous.finalY + 15,
-      head: [['Metric', 'Value']],
-      body: performanceData,
-      theme: 'grid',
-      headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255] },
-      styles: { overflow: 'linebreak', cellWidth: 'auto' },
-      margin: { top: 10 }
-    });
-    
-    pdf.text('Asset Allocation', 14, pdf.autoTable.previous.finalY + 10);
-    
-    const assetData = currentPortfolio.assets.map(asset => [
-      asset.symbol,
-      asset.name,
-      `${asset.allocation.toFixed(2)}%`,
-      formatCurrency((portfolioMetrics.initialInvestment || 0) * (asset.allocation / 100))
-    ]);
-    
-    pdf.autoTable({
-      startY: pdf.autoTable.previous.finalY + 15,
-      head: [['Symbol', 'Name', 'Allocation', 'Amount']],
-      body: assetData,
-      theme: 'grid',
-      headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255] },
-      styles: { overflow: 'linebreak', cellWidth: 'auto' },
-      margin: { top: 10 }
-    });
-    
-    if (eventSimulation && eventSimulation.event) {
-      pdf.addPage();
-      pdf.text('Event Impact Analysis', 14, 15);
+    try {
+      if (!currentPortfolio) {
+        console.error('No portfolio selected');
+        return;
+      }
+      
+      if (!portfolioMetrics) {
+        console.error('No portfolio metrics available');
+        return;
+      }
+      
+      console.log('Creating PDF document');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      
+      pdf.setFontSize(18);
+      pdf.setTextColor(59, 130, 246); // Blue color
+      pdf.text('Market Confidence', pageWidth / 2, 15, { align: 'center' });
+      
+      pdf.setFontSize(14);
+      pdf.text(`Portfolio Report: ${currentPortfolio.name}`, pageWidth / 2, 25, { align: 'center' });
       
       pdf.setFontSize(10);
-      pdf.text(`Event: ${eventSimulation.event}`, 14, 25);
-      pdf.text(`Analysis Period: ${formatDate(eventSimulation.time_period.start_date)} - ${formatDate(eventSimulation.time_period.end_date)}`, 14, 32);
-      
-      const scenarioData = eventSimulation.simulation_results.map(result => [
-        result.scenario,
-        `${result.total_return >= 0 ? '+' : ''}${result.total_return.toFixed(2)}%`,
-        `-${result.max_drawdown.toFixed(2)}%`,
-        result.recovery_days ? `${result.recovery_days} days` : 'N/A'
-      ]);
-      
-      pdf.autoTable({
-        startY: 40,
-        head: [['Scenario', 'Return', 'Max Drawdown', 'Recovery Time']],
-        body: scenarioData,
-        theme: 'grid',
-        headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255] },
-        styles: { overflow: 'linebreak', cellWidth: 'auto' },
-        margin: { top: 10 }
+      pdf.setTextColor(100, 100, 100); // Gray color
+      const creationDate = new Date().toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
       });
+      pdf.text(`Generated on: ${creationDate}`, pageWidth / 2, 32, { align: 'center' });
       
-      if (eventSimulation.advice && eventSimulation.advice.text) {
-        pdf.text('Investment Advice', 14, pdf.autoTable.previous.finalY + 10);
-        pdf.setFontSize(10);
-        
-        const splitText = pdf.splitTextToSize(eventSimulation.advice.text, pageWidth - 28);
-        pdf.text(splitText, 14, pdf.autoTable.previous.finalY + 20);
+      pdf.setFontSize(12);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('Investment Summary', 14, 45);
+      
+      console.log('Adding investment data');
+      const investmentData = [
+        ['Initial Investment', formatCurrency(portfolioMetrics.initialInvestment || 0)],
+        ['Current Value', formatCurrency(portfolioMetrics.currentValue || 0)],
+        ['Total Return', `${portfolioMetrics.totalReturn >= 0 ? '+' : ''}${portfolioMetrics.totalReturn.toFixed(2)}%`]
+      ];
+      
+      console.log('Creating first table');
+      try {
+        autoTable(pdf, {
+          startY: 50,
+          head: [['Metric', 'Value']],
+          body: investmentData,
+          theme: 'grid',
+          headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255] },
+          styles: { overflow: 'linebreak', cellWidth: 'auto' },
+          margin: { top: 10 }
+        });
+      } catch (tableError) {
+        console.error('Error creating investment table:', tableError);
+        pdf.text('Initial Investment: ' + formatCurrency(portfolioMetrics.initialInvestment || 0), 14, 55);
+        pdf.text('Current Value: ' + formatCurrency(portfolioMetrics.currentValue || 0), 14, 62);
+        pdf.text('Total Return: ' + `${portfolioMetrics.totalReturn >= 0 ? '+' : ''}${portfolioMetrics.totalReturn.toFixed(2)}%`, 14, 69);
       }
+      
+      let yPosition = 80; // Fallback position if autoTable fails
+      
+      try {
+        yPosition = (pdf as any).lastAutoTable.finalY + 10;
+        pdf.text('Performance Metrics', 14, yPosition);
+        
+        const performanceData = [
+          ['Total Return', `${portfolioMetrics.totalReturn >= 0 ? '+' : ''}${portfolioMetrics.totalReturn.toFixed(2)}%`],
+          ['Max Drawdown', `-${portfolioMetrics.maxDrawdown.toFixed(2)}%`],
+          ['Volatility', `${portfolioMetrics.volatility.toFixed(2)}%`]
+        ];
+        
+        autoTable(pdf, {
+          startY: yPosition + 5,
+          head: [['Metric', 'Value']],
+          body: performanceData,
+          theme: 'grid',
+          headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255] },
+          styles: { overflow: 'linebreak', cellWidth: 'auto' },
+          margin: { top: 10 }
+        });
+        
+        yPosition = (pdf as any).lastAutoTable.finalY + 10;
+      } catch (tableError) {
+        console.error('Error creating performance metrics table:', tableError);
+        pdf.text('Performance Metrics', 14, yPosition);
+        pdf.text('Total Return: ' + `${portfolioMetrics.totalReturn >= 0 ? '+' : ''}${portfolioMetrics.totalReturn.toFixed(2)}%`, 14, yPosition + 7);
+        pdf.text('Max Drawdown: ' + `-${portfolioMetrics.maxDrawdown.toFixed(2)}%`, 14, yPosition + 14);
+        pdf.text('Volatility: ' + `${portfolioMetrics.volatility.toFixed(2)}%`, 14, yPosition + 21);
+        yPosition += 30;
+      }
+      
+      pdf.text('Asset Allocation', 14, yPosition);
+      
+      try {
+        const assetData = currentPortfolio.assets.map(asset => [
+          asset.symbol,
+          asset.name,
+          `${asset.allocation.toFixed(2)}%`,
+          formatCurrency((portfolioMetrics.initialInvestment || 0) * (asset.allocation / 100))
+        ]);
+        
+        autoTable(pdf, {
+          startY: yPosition + 5,
+          head: [['Symbol', 'Name', 'Allocation', 'Amount']],
+          body: assetData,
+          theme: 'grid',
+          headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255] },
+          styles: { overflow: 'linebreak', cellWidth: 'auto' },
+          margin: { top: 10 }
+        });
+        
+        yPosition = (pdf as any).lastAutoTable.finalY + 10;
+      } catch (tableError) {
+        console.error('Error creating asset allocation table:', tableError);
+        yPosition += 7;
+        currentPortfolio.assets.forEach((asset, index) => {
+          pdf.text(`${asset.symbol} (${asset.name}): ${asset.allocation.toFixed(2)}% - ${formatCurrency((portfolioMetrics.initialInvestment || 0) * (asset.allocation / 100))}`, 
+            14, yPosition + (index * 7));
+        });
+        yPosition += (currentPortfolio.assets.length * 7) + 10;
+      }
+      
+      if (eventSimulation && eventSimulation.event) {
+        try {
+          pdf.addPage();
+          pdf.text('Event Impact Analysis', 14, 15);
+          
+          pdf.setFontSize(10);
+          pdf.text(`Event: ${eventSimulation.event}`, 14, 25);
+          pdf.text(`Analysis Period: ${formatDate(eventSimulation.time_period.start_date)} - ${formatDate(eventSimulation.time_period.end_date)}`, 14, 32);
+          
+          const scenarioData = eventSimulation.simulation_results.map(result => [
+            result.scenario,
+            `${result.total_return >= 0 ? '+' : ''}${result.total_return.toFixed(2)}%`,
+            `-${result.max_drawdown.toFixed(2)}%`,
+            result.recovery_days ? `${result.recovery_days} days` : 'N/A'
+          ]);
+          
+          autoTable(pdf, {
+            startY: 40,
+            head: [['Scenario', 'Return', 'Max Drawdown', 'Recovery Time']],
+            body: scenarioData,
+            theme: 'grid',
+            headStyles: { fillColor: [59, 130, 246], textColor: [255, 255, 255] },
+            styles: { overflow: 'linebreak', cellWidth: 'auto' },
+            margin: { top: 10 }
+          });
+          
+          const lastY = (pdf as any).lastAutoTable.finalY;
+          
+          if (eventSimulation.advice && eventSimulation.advice.text) {
+            pdf.text('Investment Advice', 14, lastY + 10);
+            pdf.setFontSize(10);
+            
+            const splitText = pdf.splitTextToSize(eventSimulation.advice.text, pageWidth - 28);
+            pdf.text(splitText, 14, lastY + 20);
+          }
+        } catch (eventError) {
+          console.error('Error adding event analysis to PDF:', eventError);
+        }
+      }
+      
+      console.log('Creating PDF preview');
+      const pdfDataUrl = pdf.output('datauristring');
+      setPdfPreviewUrl(pdfDataUrl);
+      setIsPdfPreviewOpen(true);
+      
+      console.log('Saving PDF file');
+      pdf.save(`${currentPortfolio.name}_Report.pdf`);
+      console.log('PDF saved successfully');
+    } catch (error) {
+      console.error('Error generating PDF report:', error);
     }
+  };
+
+  const PDFViewerModal = () => {
+    if (!isPdfPreviewOpen || !pdfPreviewUrl) return null;
     
-    pdf.save(`${currentPortfolio.name}_Report.pdf`);
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-4 w-11/12 h-5/6 max-w-6xl flex flex-col">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-semibold">Portfolio Report Preview</h3>
+            <button 
+              onClick={() => setIsPdfPreviewOpen(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <X size={24} />
+            </button>
+          </div>
+          <div className="flex-grow overflow-auto">
+            <iframe 
+              src={pdfPreviewUrl} 
+              className="w-full h-full border-0"
+              title="PDF Preview"
+            />
+          </div>
+          <div className="flex justify-end mt-4">
+            <button
+              onClick={() => setIsPdfPreviewOpen(false)}
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded mr-2 hover:bg-gray-300"
+            >
+              Close
+            </button>
+            <button
+              onClick={() => {
+                if (currentPortfolio) {
+                  const link = document.createElement('a');
+                  link.href = pdfPreviewUrl;
+                  link.download = `${currentPortfolio.name}_Report.pdf`;
+                  link.click();
+                }
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center"
+            >
+              <Download size={16} className="mr-1" />
+              <span>Download</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -1336,7 +1449,7 @@ function App() {
                               className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center"
                             >
                               <Download size={16} className="mr-1" />
-                              <span>Download Report</span>
+                              <span>View Report</span>
                             </button>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1601,6 +1714,9 @@ function App() {
           </div>
         )}
       </div>
+      
+      {/* PDF Preview Modal */}
+      <PDFViewerModal />
     </div>
   );
 }
