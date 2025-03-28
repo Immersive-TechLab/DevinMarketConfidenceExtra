@@ -995,9 +995,7 @@ function App() {
       setPdfPreviewUrl(pdfDataUrl);
       setIsPdfPreviewOpen(true);
       
-      console.log('Saving PDF file');
-      pdf.save(`Market_Confidence_${currentPortfolio.name}.pdf`);
-      console.log('PDF saved successfully');
+      console.log('PDF preview ready');
     } catch (error) {
       console.error('Error generating PDF report:', error);
     }
@@ -1037,7 +1035,7 @@ function App() {
                 if (currentPortfolio) {
                   const link = document.createElement('a');
                   link.href = pdfPreviewUrl;
-                  link.download = `${currentPortfolio.name}_Report.pdf`;
+                  link.download = `Market_Confidence_${currentPortfolio.name}.pdf`;
                   link.click();
                 }
               }}
