@@ -68,9 +68,11 @@ jobs:
         
   build-and-deploy-backend:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
     
     - name: Setup Python
       uses: actions/setup-python@v4
@@ -78,23 +80,33 @@ jobs:
         python-version: '3.12'
         cache: 'pip'
     
-    - name: Install uv
-      run: |
-        pip install uv
-    
     - name: Install dependencies
       run: |
-        cd backend
-        uv pip install -r requirements.txt
+        pip install -U pip
+        pip install -r backend/requirements.txt
     
-    - name: Deploy to Fly.io
-      if: github.ref == 'refs/heads/main'
+    - name: Create render.yaml configuration
       run: |
-        curl -L https://fly.io/install.sh | sh
-        export FLYCTL_INSTALL="/home/runner/.fly"
-        export PATH="$FLYCTL_INSTALL/bin:$PATH"
-        cd backend
-        flyctl deploy --remote-only
+        cat > render.yaml << 'EOL'
+        services:
+          - type: web
+            name: market-confidence-backend
+            env: python
+            buildCommand: pip install -r requirements.txt
+            startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+            envVars:
+              - key: OPENAI_API_KEY
+                sync: false
+            plan: free
+        EOL
+    
+    - name: Deploy to Render
+      uses: JorgeLNJunior/render-deploy@v1.4.3
+      with:
+        service_id: ${{ secrets.RENDER_SERVICE_ID }}
+        api_key: ${{ secrets.RENDER_API_KEY }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        render_yaml: true
+        web_deploy: true
       env:
-        FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
