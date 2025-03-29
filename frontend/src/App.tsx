@@ -3,6 +3,16 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Search, Plus, Edit, Trash, X, Eye, EyeOff, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { 
+  API_BASE_URL, 
+  mockMarketData, 
+  mockPortfolios, 
+  mockPortfolioPerformance, 
+  mockEventAnalysis, 
+  mockAssetSearch, 
+  mockEventSimulation, 
+  shouldUseMockData 
+} from './mockApi';
 
 interface MarketData {
   date: string;
@@ -136,14 +146,23 @@ function App() {
   const fetchMarketData = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/market-data?period=${selectedPeriod}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch market data');
+      const useMockData = shouldUseMockData();
+      
+      if (useMockData) {
+        console.log('Using mock market data');
+        setMarketData(mockMarketData);
+      } else {
+        const response = await fetch(`${API_BASE_URL}/api/market-data?period=${selectedPeriod}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch market data');
+        }
+        const data = await response.json();
+        setMarketData(data);
       }
-      const data = await response.json();
-      setMarketData(data);
     } catch (error) {
       console.error('Error fetching market data:', error);
+      console.log('Falling back to mock data due to error');
+      setMarketData(mockMarketData);
     } finally {
       setIsLoading(false);
     }
@@ -151,35 +170,56 @@ function App() {
 
   const fetchPortfolios = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/portfolios`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch portfolios');
+      const useMockData = shouldUseMockData();
+      
+      if (useMockData) {
+        console.log('Using mock portfolio data');
+        setPortfolios(mockPortfolios);
+      } else {
+        const response = await fetch(`${API_BASE_URL}/api/portfolios`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch portfolios');
+        }
+        const data = await response.json();
+        setPortfolios(data);
       }
-      const data = await response.json();
-      setPortfolios(data);
     } catch (error) {
       console.error('Error fetching portfolios:', error);
+      console.log('Falling back to mock data due to error');
+      setPortfolios(mockPortfolios);
     }
   };
 
   const fetchPortfolioPerformance = async (portfolioId: string) => {
     try {
-      const portfolioResponse = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/portfolios/${portfolioId}`
-      );
-      if (!portfolioResponse.ok) {
-        throw new Error('Failed to fetch portfolio details');
-      }
-      const portfolioData = await portfolioResponse.json();
-      const investmentAmount = portfolioData.investment_amount || 10000; // Default to $10,000 if not specified
+      const useMockData = shouldUseMockData();
       
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/portfolios/${portfolioId}/performance?period=${selectedPeriod}`
-      );
-      if (!response.ok) {
-        throw new Error('Failed to fetch portfolio performance');
+      let data;
+      let investmentAmount = 10000; // Default
+      
+      if (useMockData) {
+        console.log('Using mock portfolio performance data');
+        data = mockPortfolioPerformance;
+        const portfolio = mockPortfolios.find(p => p.id === portfolioId) || mockPortfolios[0];
+        investmentAmount = portfolio.investment_amount || 10000;
+      } else {
+        const portfolioResponse = await fetch(
+          `${API_BASE_URL}/api/portfolios/${portfolioId}`
+        );
+        if (!portfolioResponse.ok) {
+          throw new Error('Failed to fetch portfolio details');
+        }
+        const portfolioData = await portfolioResponse.json();
+        investmentAmount = portfolioData.investment_amount || 10000; // Default to $10,000 if not specified
+        
+        const response = await fetch(
+          `${API_BASE_URL}/api/portfolios/${portfolioId}/performance?period=${selectedPeriod}`
+        );
+        if (!response.ok) {
+          throw new Error('Failed to fetch portfolio performance');
+        }
+        data = await response.json();
       }
-      const data = await response.json();
       
       const dollarPerformance = data.performance.map((point: any) => ({
         date: point.date,
@@ -236,17 +276,25 @@ function App() {
     if (!assetSearchQuery.trim()) return;
     
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/search-assets?query=${encodeURIComponent(assetSearchQuery)}`
-      );
-      if (!response.ok) {
-        throw new Error('Failed to search assets');
+      const useMockData = shouldUseMockData();
+      
+      if (useMockData) {
+        console.log('Using mock asset search data');
+        setSearchResults(mockAssetSearch);
+      } else {
+        const response = await fetch(
+          `${API_BASE_URL}/api/search-assets?query=${encodeURIComponent(assetSearchQuery)}`
+        );
+        if (!response.ok) {
+          throw new Error('Failed to search assets');
+        }
+        const data = await response.json();
+        setSearchResults(data);
       }
-      const data = await response.json();
-      setSearchResults(data);
     } catch (error) {
       console.error('Error searching assets:', error);
-      setSearchResults([]);
+      console.log('Falling back to mock data due to error');
+      setSearchResults(mockAssetSearch);
     }
   };
   
@@ -314,12 +362,37 @@ function App() {
     };
     
     console.log('Saving portfolio data:', portfolioData);
-    console.log('API URL:', import.meta.env.VITE_API_URL);
+    console.log('API URL:', API_BASE_URL);
     
     try {
+      const useMockData = shouldUseMockData();
+      
+      if (useMockData) {
+        console.log('Using mock data for portfolio save');
+        const savedPortfolio = {
+          ...portfolioData,
+          id: isEditingPortfolio && currentPortfolio ? currentPortfolio.id : `mock-portfolio-${Date.now()}`,
+          created_at: new Date().toISOString()
+        } as Portfolio;
+        
+        setPortfolioName('');
+        setPortfolioAssets([]);
+        setIsCreatingPortfolio(false);
+        setIsEditingPortfolio(false);
+        
+        if (isEditingPortfolio && currentPortfolio) {
+          setPortfolios(portfolios.map(p => p.id === currentPortfolio.id ? savedPortfolio : p));
+        } else {
+          setPortfolios([...portfolios, savedPortfolio]);
+          setCurrentPortfolio(savedPortfolio);
+        }
+        
+        return;
+      }
+      
       let response;
       if (isEditingPortfolio && currentPortfolio) {
-        response = await fetch(`${import.meta.env.VITE_API_URL}/api/portfolios/${currentPortfolio.id}`, {
+        response = await fetch(`${API_BASE_URL}/api/portfolios/${currentPortfolio.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -328,7 +401,7 @@ function App() {
         });
       } else {
         console.log('Creating new portfolio');
-        response = await fetch(`${import.meta.env.VITE_API_URL}/api/portfolios`, {
+        response = await fetch(`${API_BASE_URL}/api/portfolios`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -369,7 +442,20 @@ function App() {
     }
     
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/portfolios/${portfolioId}`, {
+      const useMockData = shouldUseMockData();
+      
+      if (useMockData) {
+        console.log('Using mock data for portfolio deletion');
+        if (currentPortfolio && currentPortfolio.id === portfolioId) {
+          setCurrentPortfolio(null);
+          setPortfolioPerformance([]);
+        }
+        
+        fetchPortfolios();
+        return;
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/api/portfolios/${portfolioId}`, {
         method: 'DELETE',
       });
       
@@ -429,7 +515,28 @@ function App() {
     
     setIsAnalyzing(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/analyze-event`, {
+      const useMockData = shouldUseMockData();
+      
+      if (useMockData) {
+        console.log('Using mock event analysis data');
+        const analysisData = mockEventAnalysis;
+        setEventAnalysis(analysisData);
+        
+        if (analysisData.time_period && analysisData.time_period.start_date && analysisData.time_period.end_date) {
+          const startDate = new Date(analysisData.time_period.start_date);
+          const endDate = new Date(analysisData.time_period.end_date);
+          
+          setHighlightPeriod({
+            start: startDate.toISOString().split('T')[0],
+            end: endDate.toISOString().split('T')[0]
+          });
+          
+          setMarketData(mockMarketData);
+        }
+        return;
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/api/analyze-event`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -465,7 +572,7 @@ function App() {
         bufferAfter.setMonth(bufferAfter.getMonth() + 3);
         
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/market-data?start=${bufferBefore.toISOString().split('T')[0]}&end=${bufferAfter.toISOString().split('T')[0]}`
+          `${API_BASE_URL}/api/market-data?start=${bufferBefore.toISOString().split('T')[0]}&end=${bufferAfter.toISOString().split('T')[0]}`
         );
         
         if (response.ok) {
@@ -489,7 +596,16 @@ function App() {
     
     setIsSimulating(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/portfolios/event-simulation`, {
+      const useMockData = shouldUseMockData();
+      
+      if (useMockData) {
+        console.log('Using mock event simulation data');
+        const simulationData = mockEventSimulation;
+        setEventSimulation(simulationData);
+        return;
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/api/portfolios/event-simulation`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
