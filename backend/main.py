@@ -64,6 +64,13 @@ class PortfolioCreate(BaseModel):
 async def root():
     return {"message": "Welcome to the Market Confidence API"}
 
+@app.get("/api/health-check")
+async def health_check():
+    """
+    Health check endpoint for API availability testing
+    """
+    return {"status": "ok", "message": "API is running"}
+
 @app.get("/api/market-data")
 async def get_market_data(
     period: Optional[str] = None,
