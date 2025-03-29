@@ -362,12 +362,37 @@ function App() {
     };
     
     console.log('Saving portfolio data:', portfolioData);
-    console.log('API URL:', import.meta.env.VITE_API_URL);
+    console.log('API URL:', API_BASE_URL);
     
     try {
+      const useMockData = shouldUseMockData();
+      
+      if (useMockData) {
+        console.log('Using mock data for portfolio save');
+        const savedPortfolio = {
+          ...portfolioData,
+          id: isEditingPortfolio && currentPortfolio ? currentPortfolio.id : `mock-portfolio-${Date.now()}`,
+          created_at: new Date().toISOString()
+        } as Portfolio;
+        
+        setPortfolioName('');
+        setPortfolioAssets([]);
+        setIsCreatingPortfolio(false);
+        setIsEditingPortfolio(false);
+        
+        if (isEditingPortfolio && currentPortfolio) {
+          setPortfolios(portfolios.map(p => p.id === currentPortfolio.id ? savedPortfolio : p));
+        } else {
+          setPortfolios([...portfolios, savedPortfolio]);
+          setCurrentPortfolio(savedPortfolio);
+        }
+        
+        return;
+      }
+      
       let response;
       if (isEditingPortfolio && currentPortfolio) {
-        response = await fetch(`${import.meta.env.VITE_API_URL}/api/portfolios/${currentPortfolio.id}`, {
+        response = await fetch(`${API_BASE_URL}/api/portfolios/${currentPortfolio.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -376,7 +401,7 @@ function App() {
         });
       } else {
         console.log('Creating new portfolio');
-        response = await fetch(`${import.meta.env.VITE_API_URL}/api/portfolios`, {
+        response = await fetch(`${API_BASE_URL}/api/portfolios`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -417,7 +442,20 @@ function App() {
     }
     
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/portfolios/${portfolioId}`, {
+      const useMockData = shouldUseMockData();
+      
+      if (useMockData) {
+        console.log('Using mock data for portfolio deletion');
+        if (currentPortfolio && currentPortfolio.id === portfolioId) {
+          setCurrentPortfolio(null);
+          setPortfolioPerformance([]);
+        }
+        
+        fetchPortfolios();
+        return;
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/api/portfolios/${portfolioId}`, {
         method: 'DELETE',
       });
       
