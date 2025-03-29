@@ -492,6 +492,26 @@ function App() {
 
   useEffect(() => {
     fetchPortfolios();
+    
+    if (shouldUseMockData()) {
+      console.log('Initializing with mock portfolio data for testing');
+      const mockPortfolio = mockPortfolios[0];
+      setCurrentPortfolio(mockPortfolio);
+      
+      setPortfolioMetrics({
+        totalReturn: 8.0,
+        maxDrawdown: 5.0,
+        volatility: 12.5,
+        initialInvestment: mockPortfolio.investment_amount || 10000,
+        currentValue: 10800
+      });
+      
+      const dollarPerformance = mockPortfolioPerformance.performance.map((point) => ({
+        date: point.date,
+        value: point.value * (mockPortfolio.investment_amount || 10000) / 100
+      }));
+      setPortfolioPerformance(dollarPerformance);
+    }
   }, []);
   
   useEffect(() => {
