@@ -1139,7 +1139,7 @@ function App() {
                 if (currentPortfolio) {
                   const link = document.createElement('a');
                   link.href = pdfPreviewUrl;
-                  link.download = `Market_Confidence_Report.pdf`;
+                  link.download = `Market_Confidence_${currentPortfolio.name}.pdf`;
                   link.click();
                 }
               }}
