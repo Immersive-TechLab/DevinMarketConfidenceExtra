@@ -3,6 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Search, Plus, Edit, Trash, X, Eye, EyeOff, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { mockMarketData, mockPortfolios, mockPortfolioPerformance, mockEventAnalysis, mockAssetSearch, mockEventSimulation, shouldUseMockData } from './mockApi';
 
 interface MarketData {
   date: string;
@@ -136,7 +137,13 @@ function App() {
   const fetchMarketData = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/market-data?period=${selectedPeriod}`);
+      if (shouldUseMockData()) {
+        console.log('Using mock market data');
+        setMarketData(mockMarketData);
+        return;
+      }
+      
+      const response = await fetch(`${(import.meta as any).env?.VITE_API_URL}/api/market-data?period=${selectedPeriod}`);
       if (!response.ok) {
         throw new Error('Failed to fetch market data');
       }
@@ -144,6 +151,8 @@ function App() {
       setMarketData(data);
     } catch (error) {
       console.error('Error fetching market data:', error);
+      console.log('Falling back to mock data');
+      setMarketData(mockMarketData);
     } finally {
       setIsLoading(false);
     }
@@ -151,7 +160,13 @@ function App() {
 
   const fetchPortfolios = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/portfolios`);
+      if (shouldUseMockData()) {
+        console.log('Using mock portfolio data');
+        setPortfolios(mockPortfolios);
+        return;
+      }
+      
+      const response = await fetch(`${(import.meta as any).env?.VITE_API_URL}/api/portfolios`);
       if (!response.ok) {
         throw new Error('Failed to fetch portfolios');
       }
@@ -159,13 +174,57 @@ function App() {
       setPortfolios(data);
     } catch (error) {
       console.error('Error fetching portfolios:', error);
+      console.log('Falling back to mock portfolio data');
+      setPortfolios(mockPortfolios);
     }
   };
 
   const fetchPortfolioPerformance = async (portfolioId: string) => {
     try {
+      if (shouldUseMockData()) {
+        console.log('Using mock portfolio performance data');
+        const mockPortfolio = mockPortfolios.find(p => p.id === portfolioId) || mockPortfolios[0];
+        const investmentAmount = mockPortfolio.investment_amount || 10000;
+        
+        const dollarPerformance = mockPortfolioPerformance.performance.map((point: any) => ({
+          date: point.date,
+          value: point.value * (investmentAmount / 100)
+        }));
+        
+        setPortfolioPerformance(dollarPerformance);
+        
+        if (dollarPerformance && dollarPerformance.length > 1) {
+          const initialValue = dollarPerformance[0].value;
+          const currentValue = dollarPerformance[dollarPerformance.length - 1].value;
+          const totalReturn = ((currentValue - initialValue) / initialValue) * 100;
+          
+          let maxValue = initialValue;
+          let maxDrawdown = 0;
+          
+          for (const point of dollarPerformance) {
+            if (point.value > maxValue) {
+              maxValue = point.value;
+            }
+            
+            const drawdown = ((maxValue - point.value) / maxValue) * 100;
+            if (drawdown > maxDrawdown) {
+              maxDrawdown = drawdown;
+            }
+          }
+          
+          setPortfolioMetrics({
+            totalReturn,
+            maxDrawdown,
+            volatility: 12.5, // Mock volatility
+            initialInvestment: investmentAmount,
+            currentValue
+          });
+        }
+        return;
+      }
+      
       const portfolioResponse = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/portfolios/${portfolioId}`
+        `${(import.meta as any).env?.VITE_API_URL}/api/portfolios/${portfolioId}`
       );
       if (!portfolioResponse.ok) {
         throw new Error('Failed to fetch portfolio details');
@@ -174,7 +233,7 @@ function App() {
       const investmentAmount = portfolioData.investment_amount || 10000; // Default to $10,000 if not specified
       
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/portfolios/${portfolioId}/performance?period=${selectedPeriod}`
+        `${(import.meta as any).env?.VITE_API_URL}/api/portfolios/${portfolioId}/performance?period=${selectedPeriod}`
       );
       if (!response.ok) {
         throw new Error('Failed to fetch portfolio performance');
@@ -236,8 +295,18 @@ function App() {
     if (!assetSearchQuery.trim()) return;
     
     try {
+      if (shouldUseMockData()) {
+        console.log('Using mock asset search data');
+        const filteredAssets = mockAssetSearch.filter(asset => 
+          asset.symbol.toLowerCase().includes(assetSearchQuery.toLowerCase()) || 
+          asset.name.toLowerCase().includes(assetSearchQuery.toLowerCase())
+        );
+        setSearchResults(filteredAssets);
+        return;
+      }
+      
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/search-assets?query=${encodeURIComponent(assetSearchQuery)}`
+        `${(import.meta as any).env?.VITE_API_URL}/api/search-assets?query=${encodeURIComponent(assetSearchQuery)}`
       );
       if (!response.ok) {
         throw new Error('Failed to search assets');
@@ -246,7 +315,11 @@ function App() {
       setSearchResults(data);
     } catch (error) {
       console.error('Error searching assets:', error);
-      setSearchResults([]);
+      const filteredAssets = mockAssetSearch.filter(asset => 
+        asset.symbol.toLowerCase().includes(assetSearchQuery.toLowerCase()) || 
+        asset.name.toLowerCase().includes(assetSearchQuery.toLowerCase())
+      );
+      setSearchResults(filteredAssets);
     }
   };
   
@@ -429,7 +502,26 @@ function App() {
     
     setIsAnalyzing(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/analyze-event`, {
+      if (shouldUseMockData()) {
+        console.log('Using mock event analysis data');
+        
+        setTimeout(() => {
+          setEventAnalysis(mockEventAnalysis);
+          
+          if (mockEventAnalysis.time_period) {
+            setHighlightPeriod({
+              start: mockEventAnalysis.time_period.start_date,
+              end: mockEventAnalysis.time_period.end_date
+            });
+          }
+          
+          setIsAnalyzing(false);
+        }, 1500);
+        
+        return;
+      }
+      
+      const response = await fetch(`${(import.meta as any).env?.VITE_API_URL}/api/analyze-event`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -489,7 +581,18 @@ function App() {
     
     setIsSimulating(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/portfolios/event-simulation`, {
+      if (shouldUseMockData()) {
+        console.log('Using mock event simulation data');
+        
+        setTimeout(() => {
+          setEventSimulation(mockEventSimulation);
+          setIsSimulating(false);
+        }, 1500);
+        
+        return;
+      }
+      
+      const response = await fetch(`${(import.meta as any).env?.VITE_API_URL}/api/portfolios/event-simulation`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1036,7 +1139,7 @@ function App() {
                 if (currentPortfolio) {
                   const link = document.createElement('a');
                   link.href = pdfPreviewUrl;
-                  link.download = `Market_Confidence_${currentPortfolio.name}.pdf`;
+                  link.download = `Market_Confidence_Report.pdf`;
                   link.click();
                 }
               }}
