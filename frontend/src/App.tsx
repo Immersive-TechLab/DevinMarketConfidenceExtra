@@ -3,16 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Search, Plus, Edit, Trash, X, Eye, EyeOff, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { 
-  API_BASE_URL, 
-  mockMarketData, 
-  mockPortfolios, 
-  mockPortfolioPerformance, 
-  mockEventAnalysis, 
-  mockAssetSearch, 
-  mockEventSimulation, 
-  shouldUseMockData 
-} from './mockApi';
+
 
 interface MarketData {
   date: string;
@@ -146,22 +137,23 @@ function App() {
   const fetchMarketData = async () => {
     setIsLoading(true);
     try {
-      const useMockData = shouldUseMockData();
-      
-      if (useMockData) {
+
+      if (shouldUseMockData()) {
         console.log('Using mock market data');
         setMarketData(mockMarketData);
-      } else {
-        const response = await fetch(`${API_BASE_URL}/api/market-data?period=${selectedPeriod}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch market data');
-        }
-        const data = await response.json();
-        setMarketData(data);
+        return;
+      }
+      
+      const response = await fetch(`${(import.meta as any).env?.VITE_API_URL}/api/market-data?period=${selectedPeriod}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch market data');
+
       }
     } catch (error) {
       console.error('Error fetching market data:', error);
-      console.log('Falling back to mock data due to error');
+
+      console.log('Falling back to mock data');
+
       setMarketData(mockMarketData);
     } finally {
       setIsLoading(false);
@@ -170,55 +162,28 @@ function App() {
 
   const fetchPortfolios = async () => {
     try {
-      const useMockData = shouldUseMockData();
-      
-      if (useMockData) {
+
+      if (shouldUseMockData()) {
         console.log('Using mock portfolio data');
         setPortfolios(mockPortfolios);
-      } else {
-        const response = await fetch(`${API_BASE_URL}/api/portfolios`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch portfolios');
-        }
-        const data = await response.json();
-        setPortfolios(data);
+        return;
+      }
+      
+      const response = await fetch(`${(import.meta as any).env?.VITE_API_URL}/api/portfolios`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch portfolios');
+
       }
     } catch (error) {
       console.error('Error fetching portfolios:', error);
-      console.log('Falling back to mock data due to error');
+
       setPortfolios(mockPortfolios);
     }
   };
 
   const fetchPortfolioPerformance = async (portfolioId: string) => {
     try {
-      const useMockData = shouldUseMockData();
-      
-      let data;
-      let investmentAmount = 10000; // Default
-      
-      if (useMockData) {
-        console.log('Using mock portfolio performance data');
-        data = mockPortfolioPerformance;
-        const portfolio = mockPortfolios.find(p => p.id === portfolioId) || mockPortfolios[0];
-        investmentAmount = portfolio.investment_amount || 10000;
-      } else {
-        const portfolioResponse = await fetch(
-          `${API_BASE_URL}/api/portfolios/${portfolioId}`
-        );
-        if (!portfolioResponse.ok) {
-          throw new Error('Failed to fetch portfolio details');
-        }
-        const portfolioData = await portfolioResponse.json();
-        investmentAmount = portfolioData.investment_amount || 10000; // Default to $10,000 if not specified
-        
-        const response = await fetch(
-          `${API_BASE_URL}/api/portfolios/${portfolioId}/performance?period=${selectedPeriod}`
-        );
-        if (!response.ok) {
-          throw new Error('Failed to fetch portfolio performance');
-        }
-        data = await response.json();
+
       }
       
       const dollarPerformance = data.performance.map((point: any) => ({
@@ -276,25 +241,33 @@ function App() {
     if (!assetSearchQuery.trim()) return;
     
     try {
-      const useMockData = shouldUseMockData();
-      
-      if (useMockData) {
+
+      if (shouldUseMockData()) {
         console.log('Using mock asset search data');
-        setSearchResults(mockAssetSearch);
-      } else {
-        const response = await fetch(
-          `${API_BASE_URL}/api/search-assets?query=${encodeURIComponent(assetSearchQuery)}`
+        const filteredAssets = mockAssetSearch.filter(asset => 
+          asset.symbol.toLowerCase().includes(assetSearchQuery.toLowerCase()) || 
+          asset.name.toLowerCase().includes(assetSearchQuery.toLowerCase())
         );
-        if (!response.ok) {
-          throw new Error('Failed to search assets');
-        }
-        const data = await response.json();
-        setSearchResults(data);
+        setSearchResults(filteredAssets);
+        return;
+      }
+      
+      const response = await fetch(
+        `${(import.meta as any).env?.VITE_API_URL}/api/search-assets?query=${encodeURIComponent(assetSearchQuery)}`
+      );
+      if (!response.ok) {
+        throw new Error('Failed to search assets');
+
       }
     } catch (error) {
       console.error('Error searching assets:', error);
-      console.log('Falling back to mock data due to error');
-      setSearchResults(mockAssetSearch);
+
+      const filteredAssets = mockAssetSearch.filter(asset => 
+        asset.symbol.toLowerCase().includes(assetSearchQuery.toLowerCase()) || 
+        asset.name.toLowerCase().includes(assetSearchQuery.toLowerCase())
+      );
+      setSearchResults(filteredAssets);
+
     }
   };
   
@@ -515,28 +488,28 @@ function App() {
     
     setIsAnalyzing(true);
     try {
-      const useMockData = shouldUseMockData();
-      
-      if (useMockData) {
+
+      if (shouldUseMockData()) {
         console.log('Using mock event analysis data');
-        const analysisData = mockEventAnalysis;
-        setEventAnalysis(analysisData);
         
-        if (analysisData.time_period && analysisData.time_period.start_date && analysisData.time_period.end_date) {
-          const startDate = new Date(analysisData.time_period.start_date);
-          const endDate = new Date(analysisData.time_period.end_date);
+        setTimeout(() => {
+          setEventAnalysis(mockEventAnalysis);
           
-          setHighlightPeriod({
-            start: startDate.toISOString().split('T')[0],
-            end: endDate.toISOString().split('T')[0]
-          });
+          if (mockEventAnalysis.time_period) {
+            setHighlightPeriod({
+              start: mockEventAnalysis.time_period.start_date,
+              end: mockEventAnalysis.time_period.end_date
+            });
+          }
           
-          setMarketData(mockMarketData);
-        }
+          setIsAnalyzing(false);
+        }, 1500);
+        
         return;
       }
       
-      const response = await fetch(`${API_BASE_URL}/api/analyze-event`, {
+      const response = await fetch(`${(import.meta as any).env?.VITE_API_URL}/api/analyze-event`, {
+
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -596,16 +569,20 @@ function App() {
     
     setIsSimulating(true);
     try {
-      const useMockData = shouldUseMockData();
-      
-      if (useMockData) {
+
+      if (shouldUseMockData()) {
         console.log('Using mock event simulation data');
-        const simulationData = mockEventSimulation;
-        setEventSimulation(simulationData);
+        
+        setTimeout(() => {
+          setEventSimulation(mockEventSimulation);
+          setIsSimulating(false);
+        }, 1500);
+        
         return;
       }
       
-      const response = await fetch(`${API_BASE_URL}/api/portfolios/event-simulation`, {
+      const response = await fetch(`${(import.meta as any).env?.VITE_API_URL}/api/portfolios/event-simulation`, {
+
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
