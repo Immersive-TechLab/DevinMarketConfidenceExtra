@@ -1,5 +1,7 @@
 
+
 export const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://backend-xskleskk.fly.dev';
+
 
 export const mockMarketData = [
   { date: '2023-01-01', open: 100, high: 105, low: 98, close: 103, volume: 1000000 },
@@ -7,6 +9,7 @@ export const mockMarketData = [
   { date: '2023-01-03', open: 107, high: 110, low: 105, close: 109, volume: 1100000 },
   { date: '2023-01-04', open: 109, high: 112, low: 108, close: 111, volume: 1300000 },
   { date: '2023-01-05', open: 111, high: 115, low: 110, close: 114, volume: 1400000 },
+
   { date: '2023-01-06', open: 114, high: 118, low: 112, close: 116, volume: 1500000 },
   { date: '2023-01-07', open: 116, high: 120, low: 115, close: 119, volume: 1600000 },
   { date: '2023-01-08', open: 119, high: 122, low: 117, close: 121, volume: 1700000 },
@@ -17,6 +20,7 @@ export const mockMarketData = [
   { date: '2023-01-13', open: 132, high: 135, low: 130, close: 134, volume: 2200000 },
   { date: '2023-01-14', open: 134, high: 138, low: 133, close: 137, volume: 2300000 },
   { date: '2023-01-15', open: 137, high: 140, low: 135, close: 139, volume: 2400000 },
+
 ];
 
 export const mockPortfolios = [
@@ -39,6 +43,7 @@ export const mockPortfolioPerformance = {
     { date: '2023-01-02', value: 102 },
     { date: '2023-01-03', value: 105 },
     { date: '2023-01-04', value: 103 },
+
     { date: '2023-01-05', value: 108 },
     { date: '2023-01-06', value: 110 },
     { date: '2023-01-07', value: 112 },
@@ -50,6 +55,7 @@ export const mockPortfolioPerformance = {
     { date: '2023-01-13', value: 128 },
     { date: '2023-01-14', value: 130 },
     { date: '2023-01-15', value: 133 }
+
   ]
 };
 
@@ -164,6 +170,8 @@ export const mockEventSimulation = {
 };
 
 export const shouldUseMockData = () => {
+
   console.log('Using mock data for deployment');
   return true;
+
 };

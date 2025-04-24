@@ -43,7 +43,7 @@ jobs:
           cd frontend
           npm run build
         env:
-          VITE_API_URL: ${{ secrets.BACKEND_API_URL }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
       
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -101,6 +101,7 @@ jobs:
         EOL
     
     - name: Deploy to Render
+      if: ${{ env.RENDER_SERVICE_ID != '' && env.RENDER_API_KEY != '' }}
       uses: JorgeLNJunior/render-deploy@v1.4.3
       with:
         service_id: ${{ secrets.RENDER_SERVICE_ID }}
@@ -110,3 +111,5 @@ jobs:
         web_deploy: true
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
